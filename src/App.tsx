@@ -1,4 +1,3 @@
-import logo from './assets/0314ca9ef2ad7a1d30a0d23fdfefdf6f06ebf23c.png';
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Input } from './components/ui/input';
