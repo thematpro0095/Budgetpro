@@ -635,15 +635,16 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
   const financialDistributionPieData = React.useMemo(() => {
     const data = [];
     
-    // Salário disponível (azul)
-    if (remainingSalary > 0) {
-      data.push({
-        name: 'Salário Disponível',
-        value: remainingSalary,
-        color: '#046BF4', // Azul
-        percentage: ((remainingSalary / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
+// Salário disponível (azul ou vermelho se negativo)
+const availableSalary = salary - salaryUsed;
+
+data.push({
+  name: availableSalary >= 0 ? 'Salário Disponível' : 'Saldo Negativo',
+  value: Math.abs(availableSalary),
+  color: availableSalary >= 0 ? '#046BF4' : '#FF4C4C', // Azul se positivo, vermelho se negativo
+  percentage: ((Math.abs(availableSalary) / (salary + creditLimit)) * 100).toFixed(1)
+});
+
     
     // Dívida bancária (vermelho)
     if (totalDebt > 0) {
