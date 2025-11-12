@@ -1978,104 +1978,40 @@ data.push({
                     </AlertDescription>
                   </Alert>
 
-                  {/* Investment Options - Mobile */}
-                  <Card className="shadow-md border-0 rounded-xl">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Opções de Investimento</CardTitle>
-                      <p className="text-xs text-gray-600">
-                        Disponível: R$ {remainingSalary > 0 ? remainingSalary.toFixed(2) : '0.00'}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {investments.map((investment) => {
-                        const IconComponent = investment.icon;
-                        const isAffordable = remainingSalary >= investment.minInvestment;
-                        
-                        return (
-                          <motion.div
-                            key={investment.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`p-3 rounded-lg border bg-white shadow-sm transition-all cursor-pointer ${
-                              isAffordable ? 'hover:border-blue-300' : 'opacity-60'
-                            }`}
-                            onClick={() => isAffordable && selectInvestment(investment)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div 
-                                  className="p-2 rounded-lg"
-                                  style={{ backgroundColor: `${investment.color}20` }}
-                                >
-                                  <IconComponent 
-                                    className="w-4 h-4" 
-                                    style={{ color: investment.color }} 
-                                  />
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium text-sm">{investment.name}</h4>
-                                    <span 
-                                      className="text-xs px-2 py-1 rounded-full"
-                                      style={{ 
-                                        backgroundColor: `${getRiskColor(investment.riskLevel)}20`,
-                                        color: getRiskColor(investment.riskLevel)
-                                      }}
-                                    >
-                                      {getRiskLabel(investment.riskLevel)}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-gray-600">{investment.type}</p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-xs font-medium text-green-600">
-                                  ±{investment.expectedReturn}%
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Min: R$ {investment.minInvestment}
-                                </p>
-                                {!isAffordable && (
-                                  <p className="text-xs text-red-500">
-                                    Saldo baixo
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                            
-                            {investment.status === 'purchased' && investment.profitLoss !== undefined && (
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span>Investido: R$ {investment.purchaseAmount?.toFixed(2)}</span>
-                                  <div className="flex items-center gap-1">
-                                    {investment.profitLoss >= 0 ? (
-                                      <TrendingUp className="w-3 h-3 text-green-600" />
-                                    ) : (
-                                      <TrendingDown className="w-3 h-3 text-red-600" />
-                                    )}
-                                    <span className={investment.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                      {investment.profitLoss >= 0 ? '+' : ''}R$ {investment.profitLoss.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-    );
-  }
+{/* 📊 Nova Seção de Distribuição de Investimentos */}
+<div className="mt-6">
+  <h2 className="text-lg font-semibold text-gray-800 mb-3">Distribuição de Investimentos</h2>
 
+  <Card className="shadow-md border-0 rounded-xl">
+    <CardContent className="flex flex-col items-center justify-center py-6">
+      <div className="w-full h-64 flex items-center justify-center">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={investmentData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius={90}
+              fill="#8884d8"
+              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+            >
+              {investmentData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={['#4F46E5', '#22C55E', '#F59E0B', '#EF4444', '#06B6D4'][index % 5]}
+                />
+              ))}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </CardContent>
+  </Card>
+</div>
 
-  // Continue with other screens (investment details, etc.) - keeping them as they were for now
-  // Investment Details Screen
   if (currentScreen === 'investment-details') {
     return (
       <div className="min-h-screen bg-gray-50">
