@@ -2070,9 +2070,9 @@ data.push({
             </TabsContent>
           </Tabs>
         </div>
-      </div>
     );
   }
+
 
   // Continue with other screens (investment details, etc.) - keeping them as they were for now
   // Investment Details Screen
