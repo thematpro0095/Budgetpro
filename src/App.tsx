@@ -190,11 +190,7 @@ export default function App() {
   const [bankDebt, setBankDebt] = useState(0);
   
   // Separate expenses for salary and credit card
-  const [expenses, setExpenses] = useState<Expense[]>([
-    { id: '1', category: 'Alimentação', amount: 500, iconType: 'coffee', paymentMethod: 'salary' },
-    { id: '2', category: 'Transporte', amount: 300, iconType: 'car', paymentMethod: 'salary' },
-    { id: '3', category: 'Moradia', amount: 1200, iconType: 'home', paymentMethod: 'salary' },
-  ]);
+const [expenses, setExpenses] = useState<Expense[]>([]);
   
   // Credit card bill payment
   const [creditBillAmount, setCreditBillAmount] = useState(0); // Total amount spent on credit card
