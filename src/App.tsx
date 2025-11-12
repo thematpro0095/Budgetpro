@@ -1473,7 +1473,6 @@ data.push({
                   </CardContent>
                 </Card>
               </div>
-            </TabsContent>
 
             {/* 🔵 BOARDS TAB - Pranchetas lado a lado */}
             <TabsContent value="boards" className="space-y-4">
