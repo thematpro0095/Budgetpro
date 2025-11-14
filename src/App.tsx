@@ -1136,15 +1136,36 @@ data.push({
   // 🟦 DASHBOARD SCREEN - Mobile First (375px optimized)
   if (currentScreen === 'dashboard') {
     return (
-     {/* Header - NOVO PADRÃO */}
-<div className="px-6 py-4 text-center shadow-sm" style={{ backgroundColor: '#046BF4' }}>
-  <img
-    src={logoDefinitiva}
-    alt="BudgetPro"
-    className={themes[theme].header}
-  />
-  <h1 className="text-white text-lg">BudgetPro</h1>
+    {/* Header - Mobile First */}
+<div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
+  <div className="flex items-center justify-between">
+
+    {/* Logo + Título */}
+    <div className="flex items-center">
+      <img 
+        src={logoDefinitiva} 
+        alt="BudgetPro" 
+        className="w-12 h-12 md:w-16 md:h-16 object-contain"
+      />
+      <div className="ml-3 md:ml-4">
+        <h1 className="text-white text-lg md:text-xl font-semibold">BudgetPro</h1>
+        <p className="text-white/80 text-xs md:text-sm hidden sm:block">
+          Suas finanças
+        </p>
+      </div>
+    </div>
+
+    {/* ⭐ BOTÃO DE TEMA AQUI */}
+    <button
+      onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      className="bg-white/20 px-3 py-2 rounded-xl text-white text-sm"
+    >
+      {theme === "light" ? "🌙" : "☀️"}
+    </button>
+
+  </div>
 </div>
+
             
             {/* Quick info - Mobile */}
             <div className="text-right text-white">
