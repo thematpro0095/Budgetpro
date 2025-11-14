@@ -1169,7 +1169,6 @@ if (currentScreen === 'dashboard') {
     </button>
 
   </div>
-</div>
 
             
             {/* Quick info - Mobile */}
