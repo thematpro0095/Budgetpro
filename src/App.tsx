@@ -2026,7 +2026,7 @@ data.push({
     return (
 
 
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${themes[theme].background}`}>
         {/* Header */}
         <div className="px-6 py-4 text-center shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <img 
