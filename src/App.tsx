@@ -1136,21 +1136,15 @@ data.push({
   // 🟦 DASHBOARD SCREEN - Mobile First (375px optimized)
   if (currentScreen === 'dashboard') {
     return (
-      <div className={`min-h-screen ${themes[theme].background}`}>
-        {/* Header - Mobile First */}
-        <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <img 
-                src={logoDefinitiva} 
-                alt="BudgetPro" 
-                className="w-12 h-12 md:w-16 md:h-16 object-contain"
-              />
-              <div className="ml-3 md:ml-4">
-                <h1 className="text-white text-lg md:text-xl font-semibold">BudgetPro</h1>
-                <p className="text-white/80 text-xs md:text-sm hidden sm:block">Suas finanças</p>
-              </div>
-            </div>
+     {/* Header - NOVO PADRÃO */}
+<div className="px-6 py-4 text-center shadow-sm" style={{ backgroundColor: '#046BF4' }}>
+  <img
+    src={logoDefinitiva}
+    alt="BudgetPro"
+    className="w-20 h-20 mx-auto object-contain"
+  />
+  <h1 className="text-white text-lg">BudgetPro</h1>
+</div>
             
             {/* Quick info - Mobile */}
             <div className="text-right text-white">
