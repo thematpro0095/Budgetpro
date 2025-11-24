@@ -2194,36 +2194,24 @@ data.push({
                               </div>
                             </div>
                             
-                            {investment.status === 'purchased' && investment.profitLoss !== undefined && (
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span>Investido: R$ {investment.purchaseAmount?.toFixed(2)}</span>
-                                  <div className="flex items-center gap-1">
-                                    {investment.profitLoss >= 0 ? (
-                                      <TrendingUp className="w-3 h-3 text-green-600" />
-                                    ) : (
-                                      <TrendingDown className="w-3 h-3 text-red-600" />
-                                    )}
-                                    <span className={investment.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                      {investment.profitLoss >= 0 ? '+' : ''}R$ {investment.profitLoss.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
+                          {investment && investment.status === 'purchased' && (
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                       <div className="flex items-center justify-between text-xs">
+                      <span>Investido: R$ {(investment.purchaseAmount ?? 0).toFixed(2)}</span>
+                     <div className="flex items-center gap-1">
+                   {((investment.profitLoss ?? 0) >= 0) ? (
+                  <TrendingUp className="w-3 h-3 text-green-600" />
+                ) : (
+          <TrendingDown className="w-3 h-3 text-red-600" />
+        )}
+        <span className={(investment.profitLoss ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+          {((investment.profitLoss ?? 0) >= 0 ? '+' : '')}R$ {(investment.profitLoss ?? 0).toFixed(2)}
+        </span>
       </div>
-    );
-  }
+    </div>
+  </div>
+)}
+
 
   // Continue with other screens (investment details, etc.) - keeping them as they were for now
   // Investment Details Screen
