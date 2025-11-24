@@ -640,13 +640,13 @@ useEffect(() => {
   if (existingMonth) {
     updated = monthlyData.map((m) =>
       m.month === currentMonth
-        ? { ...m, receitas: salary, gastos: totalExpenses, investimentos: 150 }
+        ? { ...m, receitas: salary, gastos: totalExpenses, investimentos: 0 }
         : m
     );
   } else {
     updated = [
       ...monthlyData,
-      { month: currentMonth, receitas: salary, gastos: totalExpenses, investimentos: 150 },
+      { month: currentMonth, receitas: salary, gastos: totalExpenses, investimentos: 0 },
     ];
   }
 
