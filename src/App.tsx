@@ -1,243 +1,1186 @@
-// src/App.tsx — VERSÃO FINAL OFICIAL — 100% FUNCIONAL
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Coffee, Car, Home, ShoppingCart, Smartphone, Zap, Coins, Building, Rocket,
-  Trash2, ArrowLeft, CheckCircle, AlertTriangle, DollarSign, CreditCard, TrendingUp
+  PlusCircle, Trash2, DollarSign, ShoppingCart, Car, Coffee, Home, Smartphone,
+  Mail, Lock, User, Calendar, FileText, CreditCard, TrendingUp, TrendingDown,
+  Brain, AlertTriangle, ArrowUpRight, ArrowDownRight, BarChart3, 
+  ArrowLeft, CheckCircle, Building, Zap, Coins, Rocket
 } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import { 
+  PieChart as RechartsPieChart, Cell, ResponsiveContainer, 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip 
+} from 'recharts';
 
-type Screen = 'splash' | 'login' | 'dashboard' | 'investment-details' | 'investment-purchase';
-type PaymentMethod = 'salary' | 'credit';
+const logoDefinitiva = "https://via.placeholder.com/150x150/4F46E5/FFFFFF?text=BP"; // Placeholder pro teu logo
+
+type Screen = 'splash' | 'login' | 'dashboard' | 'investment-details' | 'investment-purchase' | 'investment-result';
+type IconType = 'coffee' | 'car' | 'home' | 'shopping' | 'smartphone';
 type RiskLevel = 'low' | 'medium' | 'high';
+type InvestmentStatus = 'available' | 'purchased' | 'completed';
+type PaymentMethod = 'salary' | 'credit';
 
-interface Expense { id: string; category: string; amount: number; paymentMethod: PaymentMethod; }
-interface Investment {
-  id: string; name: string; type: string; description: string; riskLevel: RiskLevel;
-  expectedReturn: number; minInvestment: number; maxInvestment: number; color: string;
-  historicalData: { month: string; value: number }[];
+interface Expense {
+  id: string;
+  category: string;
+  amount: number;
+  iconType: IconType;
+  paymentMethod: PaymentMethod;
 }
 
-const INVESTMENTS: Investment[] = [
-  { id: "1", name: "TechNova", type: "Ações", description: "Empresa de tecnologia em crescimento", riskLevel: "medium", expectedReturn: 18, minInvestment: 100, maxInvestment: 5000, color: "#8B5CF6", historicalData: [{month:"Jan",value:100},{month:"Fev",value:105},{month:"Mar",value:108},{month:"Abr",value:112},{month:"Mai",value:110},{month:"Jun",value:115}] },
-  { id: "2", name: "CoinX", type: "Criptomoeda", description: "Moeda digital emergente", riskLevel: "high", expectedReturn: 50, minInvestment: 50, maxInvestment: 3000, color: "#F59E0B", historicalData: [{month:"Jan",value:100},{month:"Fev",value:120},{month:"Mar",value:95},{month:"Abr",value:140},{month:"Mai",value:125},{month:"Jun",value:135}] },
-  { id: "3", name: "FII Alpha", type: "Fundo Imobiliário", description: "Fundo de investimento imobiliário", riskLevel: "low", expectedReturn: 8, minInvestment: 200, maxInvestment: 10000, color: "#10B981", historicalData: [{month:"Jan",value:100},{month:"Fev",value:101},{month:"Mar",value:103},{month:"Abr",value:104},{month:"Mai",value:105},{month:"Jun",value:106}] },
-  { id: "4", name: "NeoFuture", type: "Startup", description: "Startup de energia renovável", riskLevel: "high", expectedReturn: 50, minInvestment: 500, maxInvestment: 15000, color: "#3B82F6", historicalData: [{month:"Jan",value:100},{month:"Fev",value:90},{month:"Mar",value:130},{month:"Abr",value:110},{month:"Mai",value:160},{month:"Jun",value:145}] }
+interface Investment {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  riskLevel: RiskLevel;
+  expectedReturn: number;
+  minInvestment: number;
+  maxInvestment: number;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  historicalData: { month: string; value: number }[];
+  status: InvestmentStatus;
+  purchaseAmount?: number;
+  purchaseDate?: Date;
+  currentValue?: number;
+  profitLoss?: number;
+}
+
+// Icon mapping
+const iconMap = {
+  coffee: Coffee,
+  car: Car,
+  home: Home,
+  shopping: ShoppingCart,
+  smartphone: Smartphone,
+};
+
+// Mock investments (exato do PDF)
+const MOCK_INVESTMENTS: Investment[] = [
+  {
+    id: 'tech-nova',
+    name: 'TechNova',
+    type: 'Ações',
+    description: 'Empresa de tecnologia em crescimento',
+    riskLevel: 'medium',
+    expectedReturn: 10,
+    minInvestment: 100,
+    maxInvestment: 5000,
+    icon: Zap,
+    color: '#3B82F6',
+    historicalData: [
+      { month: 'Jan', value: 100 },
+      { month: 'Fev', value: 105 },
+      { month: 'Mar', value: 108 },
+      { month: 'Abr', value: 112 },
+      { month: 'Mai', value: 110 },
+      { month: 'Jun', value: 115 }
+    ],
+    status: 'available'
+  },
+  {
+    id: 'coin-x',
+    name: 'CoinX',
+    type: 'Criptomoeda',
+    description: 'Moeda digital emergente',
+    riskLevel: 'high',
+    expectedReturn: 30,
+    minInvestment: 50,
+    maxInvestment: 3000,
+    icon: Coins,
+    color: '#F59E0B',
+    historicalData: [
+      { month: 'Jan', value: 100 },
+      { month: 'Fev', value: 120 },
+      { month: 'Mar', value: 95 },
+      { month: 'Abr', value: 140 },
+      { month: 'Mai', value: 125 },
+      { month: 'Jun', value: 135 }
+    ],
+    status: 'available'
+  },
+  {
+    id: 'fii-alpha',
+    name: 'FII Alpha',
+    type: 'Fundo Imobiliário',
+    description: 'Fundo de investimento imobiliário',
+    riskLevel: 'low',
+    expectedReturn: 5,
+    minInvestment: 200,
+    maxInvestment: 10000,
+    icon: Building,
+    color: '#10B981',
+    historicalData: [
+      { month: 'Jan', value: 100 },
+      { month: 'Fev', value: 101 },
+      { month: 'Mar', value: 103 },
+      { month: 'Abr', value: 104 },
+      { month: 'Mai', value: 105 },
+      { month: 'Jun', value: 106 }
+    ],
+    status: 'available'
+  },
+  {
+    id: 'neo-future',
+    name: 'NeoFuture',
+    type: 'Startup',
+    description: 'Startup de energia renovável',
+    riskLevel: 'high',
+    expectedReturn: 50,
+    minInvestment: 500,
+    maxInvestment: 15000,
+    icon: Rocket,
+    color: '#8B5CF6',
+    historicalData: [
+      { month: 'Jan', value: 100 },
+      { month: 'Fev', value: 90 },
+      { month: 'Mar', value: 130 },
+      { month: 'Abr', value: 110 },
+      { month: 'Mai', value: 160 },
+      { month: 'Jun', value: 145 }
+    ],
+    status: 'available'
+  }
 ];
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('splash');
-  const [salary] = useState(8000);
-  const [creditLimit] = useState(12000);
+  // Todos os states do PDF
+  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [salary, setSalary] = useState(0);
+  const [creditLimit, setCreditLimit] = useState(0);
+  const [salaryUsed, setSalaryUsed] = useState(0);
+  const [creditUsed, setCreditUsed] = useState(0);
+  const [bankDebt, setBankDebt] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [creditBillPaid, setCreditBillPaid] = useState(0);
+  const [creditBillAmount, setCreditBillAmount] = useState(0);
+  const [billPaymentAmount, setBillPaymentAmount] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newAmount, setNewAmount] = useState('');
-  const [billPayment, setBillPayment] = useState('');
-  const [selectedInv, setSelectedInv] = useState<Investment | null>(null);
-  const [invAmount, setInvAmount] = useState('');
-  const [purchaseDone, setPurchaseDone] = useState(false);
+  const [editingSalary, setEditingSalary] = useState(false);
+  const [editingCredit, setEditingCredit] = useState(false);
+  const [tempSalary, setTempSalary] = useState('0');
+  const [tempCredit, setTempCredit] = useState('0');
+  const [investments, setInvestments] = useState<Investment[]>(MOCK_INVESTMENTS);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [investmentAmount, setInvestmentAmount] = useState('');
+  const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
+  const [showInvestmentResult, setShowInvestmentResult] = useState(false);
+  const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
+  // Auto-navigate splash to login (exato do PDF)
   useEffect(() => {
-    if (screen === 'splash') {
-      const t = setTimeout(() => setScreen('login'), 10000);
-      return () => clearTimeout(t);
+    if (currentScreen === 'splash') {
+      const timer = setTimeout(() => {
+        setCurrentScreen('login');
+      }, 10000);
+      return () => clearTimeout(timer);
     }
-  }, [screen]);
+  }, [currentScreen]);
 
-  const salaryUsed = useMemo(() => expenses.filter(e => e.paymentMethod === 'salary').reduce((a, b) => a + b.amount, 0) + creditBillPaid, [expenses, creditBillPaid]);
-  const creditUsed = useMemo(() => expenses.filter(e => e.paymentMethod === 'credit').reduce((a, b) => a + b.amount, 0), [expenses]);
-  const remainingSalary = salary - salaryUsed;
-  const debt = Math.max(0, creditUsed - creditLimit);
-  const isLowMoney = remainingSalary < salary * 0.2 || creditUsed > creditLimit * 0.8;
+  // Cálculos financeiros exatos do PDF
+  const salaryExpenses = useMemo(() => 
+    expenses.filter(e => e.paymentMethod === 'salary').reduce((sum, expense) => sum + expense.amount, 0), 
+    [expenses]
+  );
+  
+  const creditExpenses = useMemo(() => 
+    expenses.filter(e => e.paymentMethod === 'credit').reduce((sum, expense) => sum + expense.amount, 0), 
+    [expenses]
+  );
+  
+  const totalExpenses = useMemo(() => salaryExpenses + creditExpenses, [salaryExpenses, creditExpenses]);
 
-  const salaryPie = [{ name: 'Usado', value: salaryUsed, color: '#EC4899' }, { name: 'Livre', value: Math.max(0, remainingSalary), color: '#A855F7' }];
-  const creditPie = [{ name: 'Usado', value: creditUsed, color: '#F59E0B' }, { name: 'Livre', value: Math.max(0, creditLimit - creditUsed), color: '#8B5CF6' }];
+  const { remainingSalary, availableCredit, totalDebt, creditBill } = useMemo(() => {
+    const currentSalaryUsed = salaryExpenses + creditBillAmount;
+    const currentCreditBill = creditExpenses;
+    const currentCreditUsed = currentCreditBill;
+    const currentDebt = Math.max(0, currentCreditUsed - creditLimit);
+    
+    return {
+      remainingSalary: salary - currentSalaryUsed,
+      availableCredit: creditLimit - currentCreditUsed,
+      totalDebt: currentDebt,
+      creditBill: currentCreditBill
+    };
+  }, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
 
-  const addExpense = (method: PaymentMethod) => {
-    if (!newCategory || !newAmount) return;
-    const amt = parseFloat(newAmount);
-    if (isNaN(amt) || amt <= 0) return;
-    setExpenses([...expenses, { id: Date.now().toString(), category: newCategory, amount: amt, paymentMethod: method }]);
-    setNewCategory(''); setNewAmount('');
-  };
+  const isLowMoney = useMemo(() => 
+    remainingSalary < salary * 0.2 || (creditBill > creditLimit * 0.8), 
+    [remainingSalary, salary, creditBill, creditLimit]
+  );
 
-  const payBill = () => {
-    const amt = parseFloat(billPayment);
-    if (amt > 0 && amt <= creditUsed && amt <= remainingSalary) {
-      setCreditBillPaid(p => p + amt);
-      setBillPayment('');
+  const expensePercentage = useMemo(() => 
+    Math.min(((salaryExpenses / salary) * 100), 100), [salaryExpenses, salary]
+  );
+  
+  const creditPercentage = useMemo(() => 
+    Math.min(((creditExpenses / creditLimit) * 100), 100), [creditExpenses, creditLimit]
+  );
+
+  const financialBreakdown = useMemo(() => {
+    const salaryUsedAmount = salaryExpenses + creditBillAmount;
+    const creditUsedAmount = creditExpenses;
+    const debtAmount = Math.max(0, creditExpenses - creditLimit);
+    
+    return {
+      salaryUsed: salaryUsedAmount,
+      creditUsed: creditUsedAmount,
+      debt: debtAmount,
+      total: totalExpenses
+    };
+  }, [salaryExpenses, creditExpenses, creditBillAmount, salary, creditLimit, totalExpenses]);
+
+  // Financial notification effects (exato do PDF)
+  useEffect(() => {
+    if (remainingSalary <= 0) {
+      // Notification removed - user controls payment method manually now
     }
-  };
-
-  const buyInvestment = () => {
-    if (!selectedInv || !invAmount) return;
-    const amt = parseFloat(invAmount);
-    if (amt >= selectedInv.minInvestment && amt <= selectedInv.maxInvestment && amt <= remainingSalary) {
-      setPurchaseDone(true);
-      setTimeout(() => setScreen('dashboard'), 3000);
+    
+    if (financialBreakdown.debt > 0) {
+      alert(`🚨 Você ultrapassou o limite do cartão. Agora está devendo ao banco R$ ${financialBreakdown.debt.toFixed(2)}!`);
     }
-  };
+    
+    if (creditBill > creditLimit * 0.9) {
+      // High credit usage warning
+    }
+  }, [financialBreakdown, salary, remainingSalary, creditBill, creditLimit]);
 
-  // ==================== SPLASH ====================
-  if (screen === 'splash') {
+  // Progress ring component mobile-first (exato do PDF)
+  const ProgressRing = ({ 
+    percentage, 
+    size = 100, 
+    strokeWidth = 6, 
+    color = '#046BF4' 
+  }: { 
+    percentage: number; 
+    size?: number; 
+    strokeWidth?: number; 
+    color?: string;
+  }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const strokeDasharray = `${circumference} ${circumference}`;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-pink-600 flex items-center justify-center">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ duration: 1.5 }} className="text-center">
-          <div className="w-40 h-40 bg-white/20 rounded-3xl mb-8" />
-          <h1 className="text-7xl font-bold text-white">BudgetPro</h1>
-          <p className="text-2xl text-white/80 mt-4">Seu dinheiro, seu controle.</p>
+      <div className="relative inline-flex items-center justify-center">
+        <svg width={size} height={size} className="transform -rotate-90">
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke="#e5e7eb"
+            strokeWidth={strokeWidth}
+            fill="transparent"
+          />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="transparent"
+            strokeDasharray={strokeDasharray}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-semibold" style={{ color }}>
+            {Math.round(percentage)}%
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  // Handlers de login/signup (exatos do PDF)
+  const handleLogin = () => {
+    if (!email || !password) return alert('Preencha todos os campos.');
+    // Simulação localStorage
+    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
+    const user = users.find((u: any) => u.email === email && u.password === password);
+    if (user) {
+      setCurrentScreen('dashboard');
+    } else {
+      alert('Email ou senha incorretos.');
+    }
+  };
+
+  const handleSignup = () => {
+    if (!name || !email || !password || password !== confirmPassword) return alert('Dados inválidos.');
+    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
+    if (users.some((u: any) => u.email === email)) return alert('Email já cadastrado.');
+    users.push({ id: Date.now(), name, email, password, cpf });
+    localStorage.setItem('budgetProUsers', JSON.stringify(users));
+    alert('Conta criada! Faça login.');
+    setCurrentScreen('login');
+  };
+
+  const addExpense = (paymentMethod: PaymentMethod) => {
+    if (newCategory && newAmount) {
+      const iconTypes: IconType[] = ['shopping', 'smartphone', 'coffee'];
+      const randomIconType = iconTypes[Math.floor(Math.random() * iconTypes.length)];
+      
+      setExpenses(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          category: newCategory,
+          amount: parseFloat(newAmount),
+          iconType: randomIconType,
+          paymentMethod: paymentMethod
+        }
+      ]);
+      setNewCategory('');
+      setNewAmount('');
+    }
+  };
+
+  const payCreditBill = () => {
+    const paymentAmount = parseFloat(billPaymentAmount);
+    
+    if (!billPaymentAmount || paymentAmount <= 0) {
+      alert('Digite um valor válido para o pagamento.');
+      return;
+    }
+    
+    if (paymentAmount > creditBill) {
+      alert(`O valor do pagamento não pode ser maior que a fatura (R$ ${creditBill.toFixed(2)}).`);
+      return;
+    }
+    
+    if (paymentAmount > remainingSalary) {
+      alert(`Você não tem saldo suficiente no salário (R$ ${remainingSalary.toFixed(2)}).`);
+      return;
+    }
+    
+    // Update credit bill amount paid
+    setCreditBillAmount(prev => prev + paymentAmount);
+    setBillPaymentAmount('');
+    
+    alert(`✅ Pagamento de R$ ${paymentAmount.toFixed(2)} realizado com sucesso!`);
+  };
+
+  const removeExpense = (id: string) => {
+    setExpenses(prev => prev.filter(expense => expense.id !== id));
+  };
+
+  const updateSalary = () => {
+    setSalary(parseFloat(tempSalary) || 0);
+    setEditingSalary(false);
+  };
+
+  const updateCredit = () => {
+    setCreditLimit(parseFloat(tempCredit) || 0);
+    setEditingCredit(false);
+  };
+
+  const selectInvestment = (investment: Investment) => {
+    setSelectedInvestment(investment);
+    setCurrentScreen('investment-details');
+  };
+
+  const confirmInvestmentPurchase = () => {
+    if (!selectedInvestment || !investmentAmount) {
+      alert('Dados incompletos para o investimento.');
+      return;
+    }
+
+    const amount = parseFloat(investmentAmount);
+    if (amount < selectedInvestment.minInvestment || amount > selectedInvestment.maxInvestment) {
+      alert(`Valor deve estar entre R$ ${selectedInvestment.minInvestment} e R$ ${selectedInvestment.maxInvestment}.`);
+      return;
+    }
+
+    if (amount > remainingSalary + availableCredit) {
+      alert('Saldo insuficiente para este investimento.');
+      return;
+    }
+
+    // Simulate investment result (random gain/loss within expected range)
+    const variationFactor = (Math.random() * 2 - 1); // -1 to 1
+    const returnPercentage = (selectedInvestment.expectedReturn / 100) * variationFactor * 0.5; // Half the expected range for realism
+    const finalValue = amount * (1 + returnPercentage);
+    const profitLoss = finalValue - amount;
+
+    // Add investment as expense
+    const investmentExpense: Expense = {
+      id: Date.now().toString(),
+      category: `Investimento: ${selectedInvestment.name}`,
+      amount: amount,
+      iconType: 'shopping'
+    };
+
+    setExpenses(prev => [...prev, investmentExpense]);
+
+    // Update investment status
+    setInvestments(prev => prev.map(inv => 
+      inv.id === selectedInvestment.id 
+        ? {
+            ...inv,
+            status: 'purchased' as InvestmentStatus,
+            purchaseAmount: amount,
+            purchaseDate: new Date(),
+            currentValue: finalValue,
+            profitLoss: profitLoss
+          }
+        : inv
+    ));
+
+    setInvestmentAmount('');
+    setPurchaseConfirmed(true);
+    setCurrentScreen('investment-result');
+    
+    // Show result after brief delay
+    setTimeout(() => setShowInvestmentResult(true), 1000);
+  };
+
+  const getRiskColor = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'low': return '#10B981';
+      case 'medium': return '#F59E0B';
+      case 'high': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const getRiskLabel = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'low': return 'Baixo';
+      case 'medium': return 'Médio';
+      case 'high': return 'Alto';
+      default: return 'Indefinido';
+    }
+  };
+
+  // TELA SPLASH (exato do PDF)
+  if (currentScreen === 'splash') {
+    return (
+      <motion.div 
+        className="min-h-screen flex flex-col items-center justify-center px-4" 
+        style={{ backgroundColor: '#046BF4' }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Logo - Mobile First */}
+        <div className="mb-8">
+          <img 
+            src={logoDefinitiva} 
+            alt="BudgetPro Logo" 
+            className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-contain"
+          />
+        </div>
+
+        {/* Loading animation - Mobile First */}
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center">
+          {Array.from({ length: 12 }).map((_, index) => {
+            const angle = (index * 360) / 12;
+            const radian = (angle * Math.PI) / 180;
+            const radius = 28;
+            const x = Math.cos(radian) * radius;
+            const y = Math.sin(radian) * radius;
+            
+            return (
+              <motion.div
+                key={index}
+                className="absolute w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-white"
+                style={{
+                  left: '50%',
+                  top: '50%',
+                  transform: `translate(${x - 6}px, ${y - 6}px)`,
+                }}
+                animate={{
+                  opacity: [0.3, 1, 0.3]
+                }}
+                transition={{
+                  duration: 1.2,
+                  repeat: Infinity,
+                  delay: index * 0.1,
+                  ease: "easeInOut"
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Texto de carregamento - Desktop only */}
+        <motion.div 
+          className="mt-8 text-center hidden md:block"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+        >
+          <p className="text-white/80 text-lg">Carregando seu app financeiro...</p>
         </motion.div>
-      </div>
+      </motion.div>
     );
   }
 
-  // ==================== LOGIN ====================
-  if (screen === 'login') {
+  // TELA LOGIN (exato do PDF)
+  if (currentScreen === 'login') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center p-8">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 w-full max-w-md">
-          <h2 className="text-4xl font-bold text-white text-center mb-10">Bem-vindo</h2>
-          <input className="w-full bg-white/20 rounded-2xl px-6 py-5 text-white placeholder-white/70 mb-6" placeholder="Email" />
-          <input type="password" className="w-full bg-white/20 rounded-2xl px-6 py-5 text-white placeholder-white/70 mb-10" placeholder="Senha" />
-          <button onClick={() => setScreen('dashboard')} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 py-5 rounded-2xl text-2xl font-bold">Entrar</button>
+      <motion.div 
+        className="min-h-screen"
+        style={{ background: 'linear-gradient(to bottom, #046BF4, white)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Header - Mobile First */}
+        <div className="px-4 py-8 text-center">
+          <h1 className="text-white text-3xl md:text-4xl lg:text-5xl mb-2 font-bold">BudgetPro</h1>
+          <p className="text-white/80 text-sm md:text-base hidden sm:block">
+            Seu assistente financeiro pessoal
+          </p>
         </div>
-      </div>
-    );
-  }
 
-  // ==================== DASHBOARD ====================
-  if (screen === 'dashboard') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-pink-800 text-white">
-        <header className="bg-black/40 backdrop-blur-xl p-8 sticky top-0">
-          <div className="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 className="text-5xl font-bold">BudgetPro</h1>
-            <div className="text-xl">
-              Salário livre: <strong>R$ {remainingSalary.toFixed(2)}</strong> | Fatura: <strong className={debt > 0 ? 'text-red-400' : ''}>R$ {creditUsed.toFixed(2)}</strong>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="px-4 py-4"
+        >
+          {/* Container - Mobile First */}
+          <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
+            <div className="text-center mb-6">
+              <h2 className="text-xl md:text-2xl lg:text-3xl mb-2 text-white font-semibold">
+                Bem-vindo de volta!
+              </h2>
+              <p className="text-gray-200 text-sm md:text-base px-2">
+                Entre na sua conta para acessar suas finanças
+              </p>
             </div>
-          </div>
-        </header>
 
-        {debt > 0 && (
-          <div className="mx-8 mt-8 bg-red-600/90 backdrop-blur p-8 rounded-3xl text-center">
-            <AlertTriangle className="w-20 h-20 mx-auto mb-4" />
-            <h2 className="text-4xl font-bold">DÍVIDA DE R$ {debt.toFixed(2)}!</h2>
-          </div>
-        )}
-
-        <div className="max-w-6xl mx-auto p-8 space-y-12">
-          {/* Cards */}
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-10 text-center"><DollarSign className="w-16 h-16 mx-auto mb-4" /><p className="text-5xl font-bold">R$ {remainingSalary.toFixed(2)}</p><p className="text-xl opacity-80">Salário Disponível</p></div>
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-10 text-center"><CreditCard className="w-16 h-16 mx-auto mb-4" /><p className="text-5xl font-bold">R$ {creditUsed.toFixed(2)}</p><p className="text-xl opacity-80">Fatura do Cartão</p></div>
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-10 text-center"><TrendingUp className="w-16 h-16 mx-auto mb-4" /><p className="text-5xl font-bold">4</p><p className="text-xl opacity-80">Investimentos</p></div>
-          </div>
-
-          {/* Gráficos */}
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
-              <h3 className="text-3xl font-bold mb-6 text-center">Salário</h3>
-              <ResponsiveContainer width="100%" height={300}><PieChart><Pie data={salaryPie} innerRadius={80} outerRadius={120} dataKey="value">{salaryPie.map((e,i)=><Cell key={i} fill={e.color}/>)}</Pie></PieChart></ResponsiveContainer>
-            </div>
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
-              <h3 className="text-3xl font-bold mb-6">Despesas</h3>
-              <div className="space-y-4 max-h-80 overflow-y-auto">
-                {expenses.map(e => (
-                  <div key={e.id} className="bg-white/10 rounded-2xl p-6 flex justify-between">
-                    <span>{e.category}</span>
-                    <span className="font-bold">R$ {e.amount.toFixed(2)}</span>
+            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm rounded-2xl">
+              <CardContent className="p-6 md:p-8 space-y-6">
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="email"
+                      placeholder="Digite seu email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                    />
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Nova despesa + Investimentos */}
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
-              <h3 className="text-3xl font-bold mb-6">Nova Despesa</h3>
-              <input className="w-full bg-white/20 rounded-2xl px-6 py-4 mb-4" placeholder="Categoria" value={newCategory} onChange={e=>setNewCategory(e.target.value)} />
-              <input className="w-full bg-white/20 rounded-2xl px-6 py-4 mb-6" placeholder="Valor" value={newAmount} onChange={e=>setNewAmount(e.target.value)} />
-              <div className="grid grid-cols-2 gap-4">
-                <button onClick={()=>addExpense('salary')} className="bg-green-600 py-4 rounded-2xl font-bold">Salário</button>
-                <button onClick={()=>addExpense('credit')} className="bg-orange-600 py-4 rounded-2xl font-bold">Cartão</button>
-              </div>
-            </div>
-
-            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-8">
-              <h3 className="text-3xl font-bold mb-6">Investir</h3>
-              <div className="grid grid-cols-2 gap-6">
-                {INVESTMENTS.map(inv => (
-                  <div key={inv.id} onClick={()=>{setSelectedInv(inv); setScreen('investment-details');}} className="bg-white/10 rounded-3xl p-8 text-center cursor-pointer hover:scale-105 transition">
-                    <div className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center" style={{backgroundColor:inv.color+'30'}}>
-                      <Zap className="w-12 h-12" style={{color:inv.color}} />
-                    </div>
-                    <h4 className="text-2xl font-bold">{inv.name}</h4>
-                    <p className="text-4xl font-bold text-green-400">{inv.expectedReturn}%</p>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="password"
+                      placeholder="Digite sua senha"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-200 transition-all"
+                    />
                   </div>
-                ))}
+                </div>
+
+                <Button
+                  onClick={handleLogin}
+                  className="w-full h-12 rounded-xl text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:brightness-110"
+                  style={{ backgroundColor: '#046BF4' }}
+                >
+                  Entrar
+                </Button>
+
+                <div className="text-center space-y-3 pt-4">
+                  <div>
+                    <button
+                      onClick={() => setCurrentScreen('forgot-password')}
+                      className="text-sm transition-colors hover:brightness-110"
+                      style={{ color: '#046BF4' }}
+                    >
+                      <span className="underline">Esqueceu sua senha?</span>
+                    </button>
+                  </div>
+                  <div>
+                    <button
+                      onClick={() => setCurrentScreen('signup')}
+                      className="text-sm transition-colors hover:brightness-110"
+                      style={{ color: '#046BF4' }}
+                    >
+                      Ainda não tem conta? <span className="underline">Criar conta</span>
+                    </button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // TELA SIGNUP (exato do PDF)
+  if (currentScreen === 'signup') {
+    return (
+      <motion.div 
+        className="min-h-screen"
+        style={{ background: 'linear-gradient(135deg, #046BF4 0%, #2A9DF4 50%, white 100%)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        {/* Header */}
+        <div className="px-4 py-8 text-center">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl mb-2 font-bold" style={{ color: '#046BF4' }}>BudgetPro</h1>
+          <h2 className="text-lg md:text-2xl lg:text-3xl text-gray-700 md:text-white/90 font-semibold">Criar Nova Conta</h2>
+          <p className="text-sm text-gray-600 md:text-white/80 mt-2 hidden sm:block">
+            Transforme sua relação com o dinheiro
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="px-4 py-4"
+        >
+          <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
+            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm rounded-2xl">
+              <CardContent className="p-6 md:p-8 space-y-4">
+                <div className="space-y-4">
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Nome completo *"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="pl-11 h-12 rounded-xl"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="email"
+                      placeholder="Email *"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-11 h-12 rounded-xl"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="password"
+                      placeholder="Senha *"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-11 h-12 rounded-xl"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="password"
+                      placeholder="Confirme senha *"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-11 h-12 rounded-xl"
+                    />
+                  </div>
+                  <div className="relative">
+                    <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="CPF (opcional)"
+                      value={cpf}
+                      onChange={(e) => setCpf(e.target.value)}
+                      className="pl-11 h-12 rounded-xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 text-center bg-gray-50 p-3 rounded-xl">
+                  * Campos obrigatórios
+                </div>
+
+                <Button
+                  onClick={handleSignup}
+                  className="w-full h-12 rounded-xl text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:brightness-110"
+                  style={{ backgroundColor: '#046BF4' }}
+                >
+                  Criar Minha Conta
+                </Button>
+
+                <div className="text-center pt-4">
+                  <button
+                    onClick={() => setCurrentScreen('login')}
+                    className="text-sm transition-colors hover:brightness-110"
+                    style={{ color: '#046BF4' }}
+                  >
+                    Já tem conta? <span className="underline">Voltar ao login</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // TELA FORGOT PASSWORD
+  if (currentScreen === 'forgot-password') {
+    return (
+      <motion.div 
+        className="min-h-screen bg-gray-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="px-4 py-8 text-center">
+          <img src={logoDefinitiva} alt="BudgetPro" className="w-20 h-20 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">Esqueceu a senha?</h1>
+          <p className="text-gray-600">Digite seu email para recuperação</p>
+        </div>
+
+        <Card className="w-full max-w-sm shadow-xl rounded-2xl">
+          <CardContent className="p-8 space-y-6">
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+              <Input
+                type="email"
+                placeholder="Seu email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                className="pl-11 h-12 rounded-xl"
+              />
+            </div>
+
+            <Button
+              onClick={() => {
+                alert('Link enviado! (simulação)');
+                setCurrentScreen('reset-password');
+              }}
+              className="w-full h-12 rounded-xl text-white"
+              style={{ backgroundColor: '#046BF4' }}
+            >
+              Enviar Link
+            </Button>
+
+            <button
+              onClick={() => setCurrentScreen('login')}
+              className="text-sm text-blue-600 hover:underline text-center w-full"
+            >
+              Voltar ao login
+            </button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  // TELA RESET PASSWORD
+  if (currentScreen === 'reset-password') {
+    return (
+      <motion.div 
+        className="min-h-screen bg-gray-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
+      >
+        <div className="px-4 py-8 text-center">
+          <img src={logoDefinitiva} alt="BudgetPro" className="w-20 h-20 mx-auto mb-4" />
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">Nova Senha</h1>
+          <p className="text-gray-600">Crie uma senha segura</p>
+        </div>
+
+        <Card className="w-full max-w-sm shadow-xl rounded-2xl">
+          <CardContent className="p-8 space-y-6">
+            <div className="space-y-4">
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="password"
+                  placeholder="Nova senha"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pl-11 h-12 rounded-xl"
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="password"
+                  placeholder="Confirme nova senha"
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="pl-11 h-12 rounded-xl"
+                />
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+
+            <Button
+              onClick={handleResetPassword}
+              className="w-full h-12 rounded-xl text-white"
+              style={{ backgroundColor: '#046BF4' }}
+            >
+              Salvar Nova Senha
+            </Button>
+
+            <button
+              onClick={() => setCurrentScreen('login')}
+              className="text-sm text-blue-600 hover:underline text-center w-full"
+            >
+              Voltar ao login
+            </button>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
-  // ==================== DETALHE INVESTIMENTO ====================
-  if (screen === 'investment-details' && selectedInv) {
+  // DASHBOARD (exato do PDF, com 4 abas)
+  if (currentScreen === 'dashboard') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-pink-900 text-white p-8">
-        <button onClick={()=>setScreen('dashboard')} className="mb-8"><ArrowLeft className="w-12 h-12" /></button>
-        <div className="max-w-4xl mx-auto text-center space-y-12">
-          <div>
-            <div className="inline-block p-10 rounded-full mb-8" style={{backgroundColor:selectedInv.color+'30'}}>
-              <Zap className="w-32 h-32" style={{color:selectedInv.color}} />
+      <div className={`min-h-screen ${themes[theme].background}`}>
+        {/* Header */}
+        <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <img src={logoDefinitiva} alt="BudgetPro" className="w-12 h-12 object-contain" />
+              <h1 className="text-white text-lg font-semibold ml-3">BudgetPro</h1>
             </div>
-            <h1 className="text-6xl font-bold">{selectedInv.name}</h1>
-            <p className="text-2xl mt-4 opacity-90">{selectedInv.description}</p>
+            <button onClick={() => setTheme(theme === "light" ? "dark" : "light")} className="text-white text-2xl">
+              {theme === "light" ? "🌙" : "☀️"}
+            </button>
           </div>
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={selectedInv.historicalData}>
-              <XAxis dataKey="month" stroke="white" />
-              <YAxis stroke="white" />
-              <Tooltip contentStyle={{background:'#1a0b2e', border:'none'}} />
-              <Line type="monotone" dataKey="value" stroke={selectedInv.color} strokeWidth={5} />
-            </LineChart>
-          </ResponsiveContainer>
-          <button onClick={()=>setScreen('investment-purchase')} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 py-8 rounded-3xl text-3xl font-bold">
-            Investir Agora
-          </button>
         </div>
-      </div>
-    );
-  }
 
-  // ==================== COMPRA INVESTIMENTO ====================
-  if (screen === 'investment-purchase' && selectedInv) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center p-8">
-        <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-12 w-full max-w-lg text-center">
-          {purchaseDone ? (
-            <motion.div initial={{scale:0}} animate={{scale:1}}>
-              <CheckCircle className="w-40 h-40 text-green-500 mx-auto mb-8" />
-              <h2 className="text-5xl font-bold mb-4">Investimento Confirmado!</h2>
-              <button onClick={()=>setScreen('dashboard')} className="mt-8 bg-gradient-to-r from-purple-600 to-pink-600 py-6 rounded-3xl text-2xl font-bold w-full">
-                Voltar ao Dashboard
-              </button>
-            </motion.div>
-          ) : (
-            <>
-              <h2 className="text-4xl font-bold mb-8">Quanto quer investir em {selectedInv.name}?</h2>
-              <input className="w-full bg-white/20 rounded-3xl px-8 py-10 text-6xl text-center font-bold mb-8" placeholder="0,00" value={invAmount} onChange={e=>setInvAmount(e.target.value.replace(/\D/g,''))} />
-              <p className="text-xl mb-8">Disponível: R$ {remainingSalary.toFixed(2)}</p>
-              <button onClick={buyInvestment} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 py-8 rounded-3xl text-3xl font-bold">
-                Confirmar Investimento
-              </button>
-            </>
+        <div className="px-4 py-4">
+          {/* Alerta baixo dinheiro (exato do PDF) */}
+          {isLowMoney && (
+            <Alert className="border-red-200 bg-red-50 rounded-xl mb-4">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">
+                Saldo baixo! R$ {remainingSalary.toFixed(2)} restante no salário.
+              </AlertDescription>
+            </Alert>
           )}
+
+          {/* Tabs (exato do PDF, 4 abas) */}
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 rounded-xl p-1" style={{ backgroundColor: '#f8fafc' }}>
+              <TabsTrigger value="overview" className="data-[state=active]:bg-[#046BF4] data-[state=active]:text-white rounded-lg py-2">
+                📊 Visão Geral
+              </TabsTrigger>
+              <TabsTrigger value="boards" className="data-[state=active]:bg-[#046BF4] data-[state=active]:text-white rounded-lg py-2">
+                📋 Pranchetas
+              </TabsTrigger>
+              <TabsTrigger value="payment" className="data-[state=active]:bg-[#046BF4] data-[state=active]:text-white rounded-lg py-2">
+                🧾 Fatura
+              </TabsTrigger>
+              <TabsTrigger value="ai" className="data-[state=active]:bg-[#046BF4] data-[state=active]:text-white rounded-lg py-2">
+                🤖 IA
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ABA VISÃO GERAL */}
+            <TabsContent value="overview" className="space-y-4">
+              {/* Cards resumo */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="shadow-md rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-lg bg-green-100">
+                      <ArrowUpRight className="w-4 h-4 text-green-600" />
+                    </div>
+                    <span className="text-xs text-gray-500">Receitas</span>
+                  </div>
+                  <p className="text-xl font-semibold text-green-600">R$ {salary.toFixed(2)}</p>
+                </Card>
+                <Card className="shadow-md rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-lg bg-red-100">
+                      <ArrowDownRight className="w-4 h-4 text-red-600" />
+                    </div>
+                    <span className="text-xs text-gray-500">Gastos Salário</span>
+                  </div>
+                  <p className="text-xl font-semibold text-red-600">R$ {salaryExpenses.toFixed(2)}</p>
+                </Card>
+                <Card className="shadow-md rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-lg bg-blue-100">
+                      <DollarSign className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <span className="text-xs text-gray-500">Disponível</span>
+                  </div>
+                  <p className="text-xl font-semibold text-blue-600">R$ {remainingSalary.toFixed(2)}</p>
+                </Card>
+                <Card className="shadow-md rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="p-2 rounded-lg bg-purple-100">
+                      <CreditCard className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <span className="text-xs text-gray-500">Limite Cartão</span>
+                  </div>
+                  <p className="text-xl font-semibold text-purple-600">R$ {availableCredit.toFixed(2)}</p>
+                </Card>
+              </div>
+
+              {/* Progress Ring (exato do PDF) */}
+              <Card className="shadow-md rounded-xl">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
+                      <BarChart3 className="w-4 h-4 text-white" />
+                    </div>
+                    Resumo do Mês
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                  <ProgressRing percentage={expensePercentage} color={expensePercentage > 80 ? '#EF4444' : '#046BF4'} />
+                </CardContent>
+              </Card>
+
+              {/* Gráfico linha (exato do PDF) */}
+              <Card className="shadow-md rounded-xl">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
+                      <TrendingUp className="w-4 h-4 text-white" />
+                    </div>
+                    Evolução Mensal
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={MOCK_INVESTMENTS[0].historicalData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="value" stroke="#046BF4" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ABA PRANCHETAS (lado a lado, exato do PDF) */}
+            <TabsContent value="boards" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Prancheta Salário */}
+                <Card className="shadow-md rounded-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <div className="p-2 rounded-lg bg-green-500">
+                        <DollarSign className="w-4 h-4 text-white" />
+                      </div>
+                      Prancheta Salário
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <p>Total Salário: R$ {salary.toFixed(2)}</p>
+                      <p>Gastos: R$ {salaryExpenses.toFixed(2)}</p>
+                      <p>Restante: R$ {remainingSalary.toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Input placeholder="Nova categoria" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+                      <Input type="number" placeholder="Valor" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
+                      <Button onClick={() => addExpense('salary')} className="w-full bg-green-500">
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Adicionar Gasto Salário
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {expenses.filter(e => e.paymentMethod === 'salary').map(exp => (
+                        <div key={exp.id} className="flex justify-between items-center p-2 bg-gray-100 rounded">
+                          <span>{exp.category}</span>
+                          <span>R$ {exp.amount.toFixed(2)}</span>
+                          <Button variant="destructive" size="sm" onClick={() => removeExpense(exp.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Prancheta Cartão */}
+                <Card className="shadow-md rounded-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <div className="p-2 rounded-lg bg-purple-500">
+                        <CreditCard className="w-4 h-4 text-white" />
+                      </div>
+                      Prancheta Cartão
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <p>Limite Total: R$ {creditLimit.toFixed(2)}</p>
+                      <p>Gastos: R$ {creditExpenses.toFixed(2)}</p>
+                      <p>Livre: R$ {availableCredit.toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Input placeholder="Nova categoria" value={newCategory} onChange={(e) => setNewCategory(e.target.value)} />
+                      <Input type="number" placeholder="Valor" value={newAmount} onChange={(e) => setNewAmount(e.target.value)} />
+                      <Button onClick={() => addExpense('credit')} className="w-full bg-purple-500">
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Adicionar Gasto Cartão
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {expenses.filter(e => e.paymentMethod === 'credit').map(exp => (
+                        <div key={exp.id} className="flex justify-between items-center p-2 bg-gray-100 rounded">
+                          <span>{exp.category}</span>
+                          <span>R$ {exp.amount.toFixed(2)}</span>
+                          <Button variant="destructive" size="sm" onClick={() => removeExpense(exp.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            {/* ABA PAGAR FATURA (exato do PDF) */}
+            <TabsContent value="payment" className="space-y-4">
+              <Card className="shadow-md rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Fatura do Cartão
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <p className="text-sm text-gray-600">Fatura Atual</p>
+                      <p className="text-2xl font-bold text-red-600">R$ {creditBill.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Já Pago</p>
+                      <p className="text-2xl font-bold text-green-600">R$ {creditBillAmount.toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Valor a Pagar</Label>
+                    <Input
+                      type="number"
+                      value={billPaymentAmount}
+                      onChange={(e) => setBillPaymentAmount(e.target.value)}
+                      placeholder="Digite o valor"
+                    />
+                  </div>
+                  <Button onClick={payCreditBill} className="w-full bg-blue-500">
+                    Confirmar Pagamento
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ABA IA (exato do PDF) */}
+            <TabsContent value="ai" className="space-y-4">
+              <Card className="shadow-md rounded-xl">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="w-5 h-5" />
+                    Assistente IA
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm">Sugestão: Com R$ {remainingSalary.toFixed(2)} disponível, invista 30% em renda fixa.</p>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie data={salaryPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                        {salaryPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#10B981', '#F59E0B'][index % 2]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
+      </div>
+    );
+  }
+
+  // TELA INVESTIMENTOS (exato do PDF)
+  if (currentScreen === 'investment-details') {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <Button onClick={() => setCurrentScreen('dashboard')} className="mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Voltar
+        </Button>
+        {selectedInvestment && (
+          <Card className="shadow-lg rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl">{selectedInvestment.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p>{selectedInvestment.description}</p>
+              <p>Retorno Esperado: {selectedInvestment.expectedReturn}%</p>
+              <p>Risco: {getRiskLabel(selectedInvestment.riskLevel)}</p>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={selectedInvestment.historicalData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="value" stroke={selectedInvestment.color} />
+                </LineChart>
+              </ResponsiveContainer>
+              <Button onClick={() => setCurrentScreen('investment-purchase')} className="w-full bg-blue-500">
+                Investir
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // TELA COMPRA INVESTIMENTO
+  if (currentScreen === 'investment-purchase') {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4">
+        <Button onClick={() => setCurrentScreen('investment-details')} className="mb-4">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Detalhes
+        </Button>
+        {selectedInvestment && (
+          <Card className="shadow-lg rounded-2xl">
+            <CardHeader>
+              <CardTitle className="text-2xl">Investir em {selectedInvestment.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Input
+                type="number"
+                placeholder="Valor do investimento"
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+              />
+              <Button onClick={confirmInvestmentPurchase} className="w-full bg-blue-500">
+                Confirmar
+              </Button>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
