@@ -631,11 +631,13 @@ const [monthlyData, setMonthlyData] = useState(() => {
 });
 
 // Atualiza o gráfico sempre que mudar o salário, gastos ou investimentos
+const [monthlyData, setMonthlyData] = useState([]);
+const [clientInvestments, setClientInvestments] = useState(0);
+
 useEffect(() => {
-  const currentMonth = new Date().toLocaleString("pt-BR", { month: "short" }); // ex: "nov"
+  const currentMonth = new Date().toLocaleString("pt-BR", { month: "short" });
   const existingMonth = monthlyData.find((m) => m.month === currentMonth);
 
-  // Se o cliente ainda não investiu, será 0
   const investimentosCliente = clientInvestments ?? 0;
 
   let updated;
