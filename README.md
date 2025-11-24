@@ -1,5 +1,5 @@
 
-  # BudgetPro Mobile App
+  # BudgetPro 
 
   This is a code bundle for BudgetPro Mobile App. The original project is available at https://www.figma.com/design/R0cKr7Wt62JIEE3DTOtGgJ/BudgetPro-Mobile-App.
 
