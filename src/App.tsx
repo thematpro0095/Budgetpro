@@ -630,33 +630,29 @@ const [monthlyData, setMonthlyData] = useState(() => {
   return saved ? JSON.parse(saved) : [];
 });
 
-// Atualiza o gráfico sempre que mudar o salário, gastos ou investimentos
-const [monthlyData, setMonthlyData] = useState([]);
-const [clientInvestments, setClientInvestments] = useState(0);
 
+// Atualiza o gráfico sempre que mudar o salário ou gastos
 useEffect(() => {
-  const currentMonth = new Date().toLocaleString("pt-BR", { month: "short" });
+  const currentMonth = new Date().toLocaleString("pt-BR", { month: "short" }); // ex: "nov"
   const existingMonth = monthlyData.find((m) => m.month === currentMonth);
-
-  const investimentosCliente = clientInvestments ?? 0;
 
   let updated;
   if (existingMonth) {
     updated = monthlyData.map((m) =>
       m.month === currentMonth
-        ? { ...m, receitas: salary, gastos: totalExpenses, investimentos: investimentosCliente }
+        ? { ...m, receitas: salary, gastos: totalExpenses, investimentos: 150 }
         : m
     );
   } else {
     updated = [
       ...monthlyData,
-      { month: currentMonth, receitas: salary, gastos: totalExpenses, investimentos: investimentosCliente },
+      { month: currentMonth, receitas: salary, gastos: totalExpenses, investimentos: 150 },
     ];
   }
 
   setMonthlyData(updated);
   localStorage.setItem("monthlyData", JSON.stringify(updated));
-}, [salary, totalExpenses, clientInvestments]);
+}, [salary, totalExpenses]);
 
   // 🔵 1. Gráfico de Pizza (Distribuição de Recursos) - DATA
   const financialDistributionPieData = React.useMemo(() => {
