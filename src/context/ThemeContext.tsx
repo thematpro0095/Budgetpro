@@ -1,4 +1,4 @@
-// theme.ts (versão corrigida e completa)
+// context/ThemeContext.tsx  (ou onde você guarda)
 import { createContext, useContext, useEffect, useState } from "react";
 
 interface ThemeContextType {
@@ -13,20 +13,13 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
-    // 1º tenta pegar do localStorage
     const saved = localStorage.getItem("theme") as "light" | "dark" | null;
     if (saved) return saved;
-
-    // 2º se não tiver salvo, segue a preferência do sistema
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
-
-    return "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setTheme(prev => prev === "light" ? "dark" : "light");
   };
 
   useEffect(() => {
@@ -34,16 +27,16 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  // Opcional: atualiza automaticamente se o usuário mudar a preferência do SO
+  // Atualiza automaticamente se o usuário mudar a preferência do sistema e ainda não tiver escolhido manualmente
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = (e: MediaQueryListEvent) => {
       if (!localStorage.getItem("theme")) {
         setTheme(e.matches ? "dark" : "light");
       }
     };
-    mediaQuery.addEventListener("change", handler);
-    return () => mediaQuery.removeEventListener("change", handler);
+    media.addEventListener("change", handler);
+    return () => media.removeEventListener("change", handler);
   }, []);
 
   return (
