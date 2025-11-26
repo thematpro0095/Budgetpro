@@ -208,6 +208,37 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
   const [showInvestmentResult, setShowInvestmentResult] = useState(false);
+  
+  // ============ CARREGA OS DADOS SALVOS QUANDO O APP INICIA ============
+useEffect(() => {
+  const saved = localStorage.getItem('budgetProData');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      setSalary(data.salary || 5000);
+      setCreditLimit(data.creditLimit || 3000);
+      setExpenses(data.expenses || []);
+      setCreditBillAmount(data.creditBillAmount || 0);
+      setInvestments(data.investments || MOCK_INVESTMENTS);
+      console.log('Dados carregados do localStorage!');
+    } catch (e) {
+      console.error('Erro ao carregar dados salvos', e);
+    }
+  }
+}, []);
+
+// ============ SALVA AUTOMATICAMENTE SEMPRE QUE ALGO MUDAR ============
+useEffect(() => {
+  const dataToSave = {
+    salary,
+    creditLimit,
+    expenses,
+    creditBillAmount,
+    investments,
+    version: '1.0' // pra futuras migrações
+  };
+  localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
+}, [salary, creditLimit, expenses, creditBillAmount, investments]);
 
   // New state for interactive charts
   const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
