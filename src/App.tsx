@@ -184,11 +184,6 @@ export default function App() {
   const [salary, setSalary] = useState(0);
   const [creditLimit, setCreditLimit] = useState(0);
   
-  // New financial control states
-  const [salary, setSalary] = useState(0);
-  const [creditLimit, setCreditLimit] = useState(0);
-  const [bankDebt, setBankDebt] = useState(0);
-  
   // Separate expenses for salary and credit card
 const [expenses, setExpenses] = useState<Expense[]>([]);
   
