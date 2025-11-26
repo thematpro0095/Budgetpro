@@ -208,6 +208,45 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
   const [investmentAmount, setInvestmentAmount] = useState('');
   const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
   const [showInvestmentResult, setShowInvestmentResult] = useState(false);
+
+    // ====== SEGURANÇA + PERSISTÊNCIA (NUNCA APAGA NADA) ======
+  
+  // 1. Verifica se já está logado (token)
+  useEffect(() => {
+    const token = localStorage.getItem('budgetProToken');
+    if (token && currentScreen === 'login') {
+      setCurrentScreen('dashboard');
+    }
+  }, [currentScreen]);
+
+  // 2. Carrega os dados financeiros salvos (salário, despesas, investimentos, etc)
+  useEffect(() => {
+    const saved = localStorage.getItem('budgetProData');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.salary !== undefined) setSalary(data.salary);
+        if (data.creditLimit !== undefined) setCreditLimit(data.creditLimit);
+        if (data.expenses) setExpenses(data.expenses);
+        if (data.creditBillAmount !== undefined) setCreditBillAmount(data.creditBillAmount);
+        if (data.investments) setInvestments(data.investments);
+      } catch (e) {
+        console.log("Erro ao carregar dados salvos", e);
+      }
+    }
+  }, []);
+
+  // 3. Salva tudo automaticamente quando mudar
+  useEffect(() => {
+    const dataToSave = {
+      salary,
+      creditLimit,
+      expenses,
+      creditBillAmount,
+      investments
+    };
+    localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
+  }, [salary, creditLimit, expenses, creditBillAmount, investments]);
   
   // ============ CARREGA OS DADOS SALVOS QUANDO O APP INICIA ============
 useEffect(() => {
