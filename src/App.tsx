@@ -272,19 +272,6 @@ useEffect(() => {
   }
 }, []);
 
-// ============ SALVA AUTOMATICAMENTE SEMPRE QUE ALGO MUDAR ============
-useEffect(() => {
-  const dataToSave = {
-    salary,
-    creditLimit,
-    expenses,
-    creditBillAmount,
-    investments,
-    version: '1.0' // pra futuras migrações
-  };
-  localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
-}, [salary, creditLimit, expenses, creditBillAmount, investments]);
-
   // New state for interactive charts
   const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
 
@@ -2477,6 +2464,53 @@ data.push({
     );
   }
 
-  // Continue with other screens...
-  return null;
+  // DASHBOARD PRINCIPAL (todas as outras telas voltam aqui)
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header azul lindo */}
+      <div className="bg-gradient-to-br from-blue-600 to-purple-700 text-white p-6 text-center shadow-lg">
+        <img src={logoDefinitiva} alt="BudgetPro" className="w-20 h-20 mx-auto mb-3 rounded-full" />
+        <h1 className="text-4xl font-bold">BudgetPro</h1>
+        <p className="text-lg mt-2">
+          Salário: R$ {salary.toFixed(2)} • Limite do cartão: R$ {creditLimit.toFixed(2)}
+        </p>
+      </div>
+
+      {/* Botão de sair */}
+      <div className="p-4 flex justify-end">
+        <Button
+          onClick={() => {
+            localStorage.removeItem('budgetProToken');
+            setCurrentScreen('login');
+          }}
+          variant="outline"
+          size="sm"
+        >
+          Sair
+        </Button>
+      </div>
+
+      {/* Conteúdo do dashboard (o que você já tinha) */}
+      <div className="p-6">
+        <h2 className="text-2xl font-bold text-center mb-6">Bem-vindo de volta!</h2>
+        <p className="text-center text-gray-600">Seus dados estão salvos pra sempre</p>
+        <div className="mt-8 grid grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <DollarSign className="w-12 h-12 mx-auto text-green-600" />
+              <p className="text-2xl font-bold mt-2">R$ {salary.toFixed(2)}</p>
+              <p className="text-sm text-gray-600">Salário</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <CreditCard className="w-12 h-12 mx-auto text-blue-600" />
+              <p className="text-2xl font-bold mt-2">R$ {creditLimit.toFixed(2)}</p>
+              <p className="text-sm text-gray-600">Limite do cartão</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 }
