@@ -204,6 +204,24 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
   const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
   const [showInvestmentResult, setShowInvestmentResult] = useState(false);
 
+  // ====== FUNÇÕES AUXILIARES ======
+const getRiskColor = (risk: RiskLevel) => {
+  switch (risk) {
+    case 'low': return '#10B981';
+    case 'medium': return '#F59E0B';
+    case 'high': return '#EF4444';
+    default: return '#6B7280';
+  }
+};
+
+const getRiskLabel = (risk: RiskLevel) => {
+  switch (risk) {
+    case 'low': return 'Baixo';
+    case 'medium': return 'Médio';
+    case 'high': return 'Alto';
+    default: return 'Desconhecido';
+  }
+};
     // ====== SEGURANÇA + PERSISTÊNCIA (NUNCA APAGA NADA) ======
   
   // 1. Verifica se já está logado (token)
@@ -277,26 +295,12 @@ useEffect(() => {
     const currentCreditUsed = currentCreditBill; // Credit used is the bill amount
     const currentDebt = Math.max(0, currentCreditUsed - creditLimit); // Debt if exceeds credit limit
 
-      // ====== FUNÇÕES DE RISCO (COLA AQUI) ======
-  const getRiskColor = (risk: RiskLevel) => {
-    switch (risk) {
-      case 'low': return '#10B981';
-      case 'medium': return '#F59E0B';
-      case 'high': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
+ const financialData = React.useMemo(() => {
+  const currentSalaryUsed = salaryExpenses;
+  const currentCreditUsed = creditExpenses;
+  const currentDebt = Math.max(0, salaryExpenses + creditExpenses - salary);
+  const currentCreditBill = creditBillAmount;
 
-  const getRiskLabel = (risk: RiskLevel) => {
-    switch (risk) {
-      case 'low': return 'Baixo';
-      case 'medium': return 'Médio';
-      case 'high': return 'Alto';
-      default: return 'Desconhecido';
-    }
-  };
-
-  // Calculate financial distribution (o teu return continua aqui)
   return {
     remainingSalary: salary - currentSalaryUsed,
     availableCredit: creditLimit - currentCreditUsed,
@@ -304,14 +308,6 @@ useEffect(() => {
     creditBill: currentCreditBill
   };
 }, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
-    
-    return {
-      remainingSalary: salary - currentSalaryUsed,
-      availableCredit: creditLimit - currentCreditUsed,
-      totalDebt: currentDebt,
-      creditBill: currentCreditBill
-    };
-  }, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
 
   const isLowMoney = React.useMemo(() => 
     remainingSalary < salary * 0.2 || (creditBill > creditLimit * 0.8), 
