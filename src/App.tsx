@@ -214,35 +214,7 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
     }
   }, [currentScreen]);
 
-  // 2. Carrega os dados financeiros salvos (salário, despesas, investimentos, etc)
-  useEffect(() => {
-    const saved = localStorage.getItem('budgetProData');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (data.salary !== undefined) setSalary(data.salary);
-        if (data.creditLimit !== undefined) setCreditLimit(data.creditLimit);
-        if (data.expenses) setExpenses(data.expenses);
-        if (data.creditBillAmount !== undefined) setCreditBillAmount(data.creditBillAmount);
-        if (data.investments) setInvestments(data.investments);
-      } catch (e) {
-        console.log("Erro ao carregar dados salvos", e);
-      }
-    }
-  }, []);
-
-  // 3. Salva tudo automaticamente quando mudar
-  useEffect(() => {
-    const dataToSave = {
-      salary,
-      creditLimit,
-      expenses,
-      creditBillAmount,
-      investments
-    };
-    localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
-  }, [salary, creditLimit, expenses, creditBillAmount, investments]);
-  
+ 
 // CARREGA DADOS SALVOS (NUNCA mais força 5000/3000)
 useEffect(() => {
   const saved = localStorage.getItem('budgetProData');
@@ -304,6 +276,34 @@ useEffect(() => {
     const currentCreditBill = creditExpenses; // Bill amount is credit expenses minus payments
     const currentCreditUsed = currentCreditBill; // Credit used is the bill amount
     const currentDebt = Math.max(0, currentCreditUsed - creditLimit); // Debt if exceeds credit limit
+
+      // ====== FUNÇÕES DE RISCO (COLA AQUI) ======
+  const getRiskColor = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'low': return '#10B981';
+      case 'medium': return '#F59E0B';
+      case 'high': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const getRiskLabel = (risk: RiskLevel) => {
+    switch (risk) {
+      case 'low': return 'Baixo';
+      case 'medium': return 'Médio';
+      case 'high': return 'Alto';
+      default: return 'Desconhecido';
+    }
+  };
+
+  // Calculate financial distribution (o teu return continua aqui)
+  return {
+    remainingSalary: salary - currentSalaryUsed,
+    availableCredit: creditLimit - currentCreditUsed,
+    totalDebt: currentDebt,
+    creditBill: currentCreditBill
+  };
+}, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
     
     return {
       remainingSalary: salary - currentSalaryUsed,
