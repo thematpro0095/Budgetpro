@@ -5,18 +5,25 @@ const logoDefinitiva = "/logo.png";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
-  const [isLoading, setIsLoading] = useState(true);
+  const [progress, setProgress] = useState(0);
 
-  // 12 SEGUNDOS
+  // 12 SEGUNDOS COM % ANIMADO
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      setTimeout(() => setCurrentScreen('dashboard'), 500);
-    }, 12000);
-    return () => clearTimeout(timer);
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setCurrentScreen('dashboard'), 500);
+          return 100;
+        }
+        return prev + 8.33; // 100% / 12s = 8.33% por 100ms
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
   }, []);
 
-  if (currentScreen === 'splash' || isLoading) {
+  if (currentScreen === 'splash') {
     return (
       <div 
         style={{
@@ -26,7 +33,7 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '1rem',
-          background: 'linear-gradient(135deg, #046bf3 0%, #1e40af 50%, #1e3a8a 100%)'
+          background: '#046bf3' // 👈 FUNDO EXATO #046BF3
         }}
       >
         {/* LOGO */}
@@ -39,11 +46,7 @@ export default function App() {
           <img 
             src={logoDefinitiva} 
             alt="BudgetPro" 
-            style={{ 
-              width: '160px', 
-              height: '160px',
-              filter: 'drop-shadow(0 25px 25px rgba(0,0,0,0.3))'
-            }} 
+            style={{ width: '160px', height: '160px' }} 
           />
         </motion.div>
 
@@ -93,7 +96,7 @@ export default function App() {
           Seu melhor aplicativo para finanças e economia
         </motion.p>
 
-        {/* ✅ 12 BOLINHAS #046BF3 - FORÇADAS COM STYLE */}
+        {/* ✅ 12 BOLINHAS BRANCAS */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -112,7 +115,7 @@ export default function App() {
                 position: 'absolute',
                 width: '16px',
                 height: '16px',
-                backgroundColor: '#046bf3',
+                backgroundColor: 'white', // 👈 BRANCAS!
                 borderRadius: '50%',
                 left: '50%',
                 top: '50%',
@@ -132,7 +135,7 @@ export default function App() {
           ))}
         </motion.div>
 
-        {/* BARRA DE PROGRESSO */}
+        {/* BARRA + % ANIMADO */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -148,34 +151,39 @@ export default function App() {
             <span style={{ 
               fontSize: '0.875rem', 
               fontWeight: '500', 
-              color: 'rgba(255,255,255,0.95)' 
+              color: 'white' 
             }}>
               Carregando...
             </span>
-            <span style={{ 
-              fontSize: '0.875rem', 
-              fontWeight: '500', 
-              color: 'rgba(255,255,255,0.95)' 
-            }}>
-              100%
-            </span>
+            <motion.span 
+              style={{ 
+                fontSize: '0.875rem', 
+                fontWeight: '500', 
+                color: 'white' 
+              }}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              {Math.round(progress)}%
+            </motion.span>
           </div>
           <div style={{ 
             width: '100%', 
             background: 'rgba(255,255,255,0.2)', 
             borderRadius: '9999px', 
-            height: '8px' 
+            height: '8px',
+            overflow: 'hidden'
           }}>
             <motion.div
               style={{
-                height: '8px',
-                background: 'linear-gradient(90deg, #046bf3 0%, #22c55e 50%, #86efac 100%)',
+                height: '100%',
+                background: 'linear-gradient(90deg, #046bf3 0%, #22c55e 100%)',
                 borderRadius: '9999px',
                 width: '0%'
               }}
               initial={{ width: 0 }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 11, ease: "easeInOut" }}
+              animate={{ width: `${progress}%` }}
+              transition={{ duration: 0.1 }}
             />
           </div>
         </motion.div>
@@ -186,26 +194,19 @@ export default function App() {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      background: 'linear-gradient(135deg, rgba(4, 107, 243, 0.05) 0%, rgba(59, 130, 246, 0.03) 100%)',
+      background: '#046bf3',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center'
     }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ 
-          fontSize: '3rem', 
-          fontWeight: '900',
-          background: 'linear-gradient(90deg, #046bf3 0%, #22c55e 100%)',
-          backgroundClip: 'text',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent'
-        }}>
+      <div style={{ textAlign: 'center', color: 'white' }}>
+        <h1 style={{ fontSize: '3rem', fontWeight: '900' }}>
           ✅ SPLASH PERFEITO!
         </h1>
-        <p style={{ marginTop: '1.5rem', fontSize: '1.25rem', color: '#374151' }}>
-          12 bolinhas #046BF3 + 12 segundos
+        <p style={{ marginTop: '1.5rem', fontSize: '1.25rem' }}>
+          Bolinhas brancas + #046BF3 + % animado
         </p>
       </div>
-    </div>
-  );
+    );
+  }
 }
