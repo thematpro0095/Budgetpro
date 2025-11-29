@@ -7,13 +7,14 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
   const [isLoading, setIsLoading] = useState(true);
 
+  // 12 SEGUNDOS DE LOADING
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsLoading(false);
       setTimeout(() => {
         setCurrentScreen('dashboard');
       }, 500);
-    }, 3000);
+    }, 12000); // 👈 12 SEGUNDOS!
 
     return () => clearTimeout(timer);
   }, []);
@@ -55,10 +56,10 @@ export default function App() {
           transition={{ duration: 0.8, delay: 0.8 }}
           className="text-xl md:text-2xl text-white/90 font-light mb-12 text-center max-w-2xl mx-auto px-4"
         >
-          Seu assistente financeiro inteligente
+          Seu melhor aplicativo para finanças e economia
         </motion.p>
 
-        {/* ANIMAÇÃO DE PONTOS GIRATÓRIOS */}
+        {/* ✅ 12 BOLINHAS GIRANDO (COR #046BF3) */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -68,18 +69,18 @@ export default function App() {
           {Array.from({ length: 12 }).map((_, i) => (
             <motion.div
               key={i}
-              className="absolute w-3 h-3 bg-[#046bf3]/80 rounded-full"
+              className="absolute w-4 h-4 bg-[#046bf3] rounded-full"
               style={{
                 left: '50%',
                 top: '50%',
-                transform: `translate(${-20 + Math.cos((i * 30) * Math.PI / 180) * 40}px, ${-20 + Math.sin((i * 30) * Math.PI / 180) * 40}px)`,
+                transform: `translate(${-25 + Math.cos((i * 30) * Math.PI / 180) * 50}px, ${-25 + Math.sin((i * 30) * Math.PI / 180) * 50}px)`,
               }}
               animate={{ 
-                opacity: [0.4, 1, 0.4], 
-                scale: [0.8, 1.2, 0.8] 
+                opacity: [0.3, 1, 0.3], 
+                scale: [0.7, 1.3, 0.7] 
               }}
               transition={{ 
-                duration: 1.5, 
+                duration: 1.8, 
                 repeat: Infinity, 
                 delay: i * 0.1 
               }}
@@ -87,7 +88,7 @@ export default function App() {
           ))}
         </motion.div>
 
-        {/* BARRA DE PROGRESSO */}
+        {/* BARRA DE PROGRESSO (12 SEGUNDOS) */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -103,31 +104,24 @@ export default function App() {
               className="bg-gradient-to-r from-[#046bf3] via-[#22c55e] to-[#86efac] h-2 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: "100%" }}
-              transition={{ duration: 2.5, ease: "easeInOut" }}
+              transition={{ duration: 11, ease: "easeInOut" }} // 👈 11s + 1s bolinhas = 12s
             />
           </div>
         </motion.div>
-
-        {/* RODAPÉ */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 2 }}
-          className="mt-12 text-white/70 text-sm font-light"
-        >
-          Feito com ❤️ para sua liberdade financeira
-        </motion.p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#046bf3]/5 to-blue-500/5">
+    <div className="min-h-screen bg-gradient-to-br from-[#046bf3]/10 to-blue-500/10">
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-[#046bf3]">SPLASH OK! 🎉</h1>
-          <p className="mt-4 text-gray-600">Cor #046BF3 aplicada!</p>
-          <p className="mt-2 text-sm text-gray-500">PRONTO PARA DASHBOARD</p>
+          <h1 className="text-5xl font-black bg-gradient-to-r from-[#046bf3] to-[#22c55e] bg-clip-text text-transparent">
+            ✅ SPLASH PERFEITO!
+          </h1>
+          <p className="mt-6 text-xl text-gray-700">12 bolinhas girando + 12 segundos</p>
+          <p className="mt-2 text-lg font-semibold text-[#046bf3]">Cor #046BF3 aplicada!</p>
+          <p className="mt-4 text-sm text-gray-500">PRONTO PARA DASHBOARD ➡️</p>
         </div>
       </div>
     </div>
