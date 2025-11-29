@@ -172,6 +172,7 @@ const MOCK_INVESTMENTS: Investment[] = [
 ];
 
 export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -278,6 +279,18 @@ useEffect(() => {
   };
   localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
 }, [salary, creditLimit, expenses, creditBillAmount, investments]);
+
+  // Dark Mode - Detecta preferência do sistema + salva escolha
+useEffect(() => {
+  const saved = localStorage.getItem('darkMode');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const initialDark = saved ? JSON.parse(saved) : prefersDark;
+  setIsDarkMode(initialDark);
+}, []);
+
+useEffect(() => {
+  localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+}, [isDarkMode]);
 
   // New state for interactive charts
   const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
@@ -1209,7 +1222,11 @@ data.push({
   // 🟦 DASHBOARD SCREEN - Mobile First (375px optimized)
   if (currentScreen === 'dashboard') {
     return (
-      <div className="min-h-screen bg-gray-50">
+     <div className={`min-h-screen transition-colors duration-300 ${
+  isDarkMode 
+    ? 'bg-gradient-to-br from-gray-900 via-[#1a1a1a] to-black' 
+    : 'bg-gray-50'
+}`}>
         {/* Header - Mobile First */}
         <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <div className="flex items-center justify-between">
@@ -1284,7 +1301,11 @@ data.push({
               {/* Financial Cards - Mobile Grid */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {/* Income Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${
+                isDarkMode
+                 ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                 : 'bg-white/80 backdrop-blur-sm'
+                  }`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-green-100">
@@ -1300,7 +1321,11 @@ data.push({
                 </Card>
 
                 {/* Expenses Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${
+                 isDarkMode
+                  ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                   : 'bg-white/80 backdrop-blur-sm'
+                    }`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-red-100">
@@ -1316,7 +1341,11 @@ data.push({
                 </Card>
 
                 {/* Available Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${
+                 isDarkMode
+                 ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                 : 'bg-white/80 backdrop-blur-sm'
+                  }`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg" style={{ backgroundColor: '#e0f2fe' }}>
@@ -1334,7 +1363,11 @@ data.push({
                 </Card>
 
                 {/* Credit Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${
+                isDarkMode
+                ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                : 'bg-white/80 backdrop-blur-sm'
+                }`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-purple-100">
@@ -1351,7 +1384,11 @@ data.push({
               </div>
 
               {/* Progress Summary - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+              className={`shadow-md border-0 rounded-xl ${
+                isDarkMode 
+               ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white' 
+               : 'bg-white/80 backdrop-blur-sm'
+               }`}
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1392,7 +1429,11 @@ data.push({
               </Card>
 
               {/* Line Chart - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+             <Card className={`shadow-md border-0 rounded-xl mb-4 ${
+             isDarkMode
+                ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                 : 'bg-white/80 backdrop-blur-sm'
+                  }`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1467,7 +1508,11 @@ data.push({
               </Card>
 
               {/* Pie Chart - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+              <Card className={`shadow-md border-0 rounded-xl mb-4 ${
+                isDarkMode
+                 ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                  : 'bg-white/80 backdrop-blur-sm'
+                  }`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1570,7 +1615,11 @@ data.push({
               {/* Edit Cards - Mobile */}
               <div className="space-y-4">
                 {/* Salary Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl">
+                className={`shadow-md border-0 rounded-xl ${
+                isDarkMode
+                ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                : 'bg-white/80 backdrop-blur-sm'
+                }`}
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1632,7 +1681,11 @@ data.push({
                 </Card>
 
                 {/* Credit Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl">
+                 className={`shadow-md border-0 rounded-xl ${
+                 isDarkMode
+                  ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                   : 'bg-white/80 backdrop-blur-sm'
+                    }`}
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-sm">
                       <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1709,7 +1762,11 @@ data.push({
                 {/* LEFT BOARD: SALARY EXPENSES */}
                 <div className="space-y-4">
                   {/* Summary Card - Salary */}
-                  <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-green-50 to-blue-50">
+                  <Card className={`shadow-md border-0 rounded-xl ${
+                  isDarkMode
+                  ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                  : 'bg-gradient-to-br from-green-50 to-blue-50'
+                  }`}>
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -1731,7 +1788,11 @@ data.push({
 
                   {/* Progress and Charts - Salary */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${
+                     isDarkMode
+                     ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                     : 'bg-gradient-to-br from-green-50 to-blue-50'
+                     }`}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs">Uso do Orçamento</CardTitle>
                       </CardHeader>
@@ -1748,7 +1809,11 @@ data.push({
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${
+                    isDarkMode
+                    ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                    : 'bg-gradient-to-br from-green-50 to-blue-50'
+                    }`}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs">Por Categoria</CardTitle>
                       </CardHeader>
@@ -1786,7 +1851,11 @@ data.push({
                   </div>
 
                   {/* Expense Management - Salary */}
-                  <Card className="shadow-md border-0 rounded-xl">
+                  <Card className={`shadow-md border-0 rounded-xl ${
+                  isDarkMode
+                  ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                  : 'bg-gradient-to-br from-green-50 to-blue-50'
+                  }`}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-sm">
                         <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1881,7 +1950,11 @@ data.push({
                 {/* RIGHT BOARD: CREDIT CARD EXPENSES */}
                 <div className="space-y-4">
                   {/* Summary Card - Credit */}
-                  <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50">
+                 <Card className={`shadow-md border-0 rounded-xl ${
+                 isDarkMode
+                 ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                 : 'bg-gradient-to-br from-purple-50 to-pink-50'
+                 }`}>
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -1903,7 +1976,11 @@ data.push({
 
                   {/* Progress and Charts - Credit */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${
+                     isDarkMode
+                     ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                     : 'bg-white/80 backdrop-blur-sm'
+                      }`}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs">Uso do Cartão</CardTitle>
                       </CardHeader>
@@ -1920,7 +1997,11 @@ data.push({
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${
+                    isDarkMode
+                    ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                    : 'bg-white/80 backdrop-blur-sm'
+                   }`}>
                       <CardHeader className="pb-2">
                         <CardTitle className="text-xs">Por Categoria</CardTitle>
                       </CardHeader>
@@ -1958,7 +2039,11 @@ data.push({
                   </div>
 
                   {/* Expense Management - Credit */}
-                  <Card className="shadow-md border-0 rounded-xl">
+                  <Card className={`shadow-md border-0 rounded-xl ${
+                   isDarkMode
+                    ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                     : 'bg-white/80 backdrop-blur-sm'
+                      }`}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-sm">
                         <div className="p-2 rounded-lg bg-purple-500">
@@ -2055,7 +2140,11 @@ data.push({
             {/* 🔵 PAYMENT TAB - Mobile First */}
             <TabsContent value="payment" className="space-y-4">
               {/* Bill Summary Card */}
-              <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50">
+              <Card className={`shadow-md border-0 rounded-xl ${
+              isDarkMode
+              ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+              : 'bg-gradient-to-br from-blue-50 to-purple-50'
+               }`}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -2139,7 +2228,11 @@ data.push({
               </Card>
 
               {/* Payment Info Card */}
-              <Card className="shadow-md border-0 rounded-xl">
+              <Card className={`shadow-md border-0 rounded-xl ${
+              isDarkMode
+              ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+              : 'bg-white/80 backdrop-blur-sm'
+              }`}>
                 <CardHeader>
                   <CardTitle className="text-sm">ℹ️ Como Funciona</CardTitle>
                 </CardHeader>
@@ -2154,7 +2247,11 @@ data.push({
 
             {/* 🔵 AI TAB - Mobile First */}
             <TabsContent value="ai" className="space-y-4">
-              <Card className="shadow-md border-0 rounded-xl">
+              <Card className={`shadow-md border-0 rounded-xl ${
+               isDarkMode
+                ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                 : 'bg-white/80 backdrop-blur-sm'
+                  }`}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-sm">
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -2200,7 +2297,11 @@ data.push({
                   </Alert>
 
                   {/* Investment Options - Mobile */}
-                  <Card className="shadow-md border-0 rounded-xl">
+                  <Card className={`shadow-md border-0 rounded-xl ${
+                  isDarkMode
+                   ? 'bg-gradient-to-br from-gray-800 to-[#545454] text-white'
+                    : 'bg-white/80 backdrop-blur-sm'
+                     }`}>
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm">Opções de Investimento</CardTitle>
                       <p className="text-xs text-gray-600">
@@ -2298,7 +2399,11 @@ data.push({
   // Investment Details Screen
   if (currentScreen === 'investment-details') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen transition-colors duration-300 ${
+      isDarkMode 
+      ? 'bg-gradient-to-br from-gray-900 via-[#1a1a1a] to-black' 
+      : 'bg-gray-50'
+      }`}>
         {/* Header */}
         <div className="px-6 py-4 text-center shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <img 
