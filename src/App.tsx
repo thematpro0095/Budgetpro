@@ -1225,21 +1225,10 @@ data.push({
               </div>
             </div>
 
-           <div className="flex items-center gap-4">
-  {/* Saldo - aparece em telas maiores */}
-  <div className="text-right text-white hidden sm:block">
-    <p className="text-xs text-white/80">Disponível</p>
-    <p className="text-sm font-semibold">R$ {(remainingSalary + availableCredit).toFixed(2)}</p>
-  </div>
-
-  {/* Botão Dark Mode - Lua/Sol */}
-  <button
-    onClick={() => setIsDarkMode(prev => !prev)}
-    className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-all duration-300 border border-white/10"
-    title="Alternar modo escuro"
-  >
-    {isDarkMode ? 'Moon' : 'Sun'}
-            </button>
+           {/* Quick info - Mobile */}
+               <div className="text-right text-white">
+              <p className="text-xs text-white/80">Disponível</p>
+             <p className="text-sm font-semibold">R$ {(remainingSalary + availableCredit).toFixed(2)}</p>
            </div>
           </div>
         </div>
