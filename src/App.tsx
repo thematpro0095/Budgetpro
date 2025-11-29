@@ -36,10 +36,12 @@ import {
   Building,
   Zap,
   Coins,
-  Rocket
+  Rocket,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, Pie } from 'recharts';
-const logoDefinitiva = "/logo.png";
+import logoDefinitiva from 'figma:asset/0314ca9ef2ad7a1d30a0d23fdfefdf6f06ebf23c.png';
 
 type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard' | 'investment-details' | 'investment-purchase' | 'investment-result';
 type IconType = 'coffee' | 'car' | 'home' | 'shopping' | 'smartphone';
@@ -181,17 +183,30 @@ export default function App() {
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [salary, setSalary] = useState(0);
-  const [creditLimit, setCreditLimit] = useState(0);
-
+  const [salary, setSalary] = useState(3000);
+  const [creditLimit, setCreditLimit] = useState(2000);
+  
+  // Dark Mode State
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedMode = localStorage.getItem('budgetProDarkMode');
+    if (savedMode !== null) {
+      return savedMode === 'true';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+  
   // New financial control states
   const [salaryUsed, setSalaryUsed] = useState(0);
   const [creditUsed, setCreditUsed] = useState(0);
   const [bankDebt, setBankDebt] = useState(0);
-
+  
   // Separate expenses for salary and credit card
-const [expenses, setExpenses] = useState<Expense[]>([]);
-
+  const [expenses, setExpenses] = useState<Expense[]>([
+    { id: '1', category: 'Alimentação', amount: 500, iconType: 'coffee', paymentMethod: 'salary' },
+    { id: '2', category: 'Transporte', amount: 300, iconType: 'car', paymentMethod: 'salary' },
+    { id: '3', category: 'Moradia', amount: 1200, iconType: 'home', paymentMethod: 'salary' },
+  ]);
+  
   // Credit card bill payment
   const [creditBillAmount, setCreditBillAmount] = useState(0); // Total amount spent on credit card
   const [billPaymentAmount, setBillPaymentAmount] = useState('');
@@ -209,76 +224,6 @@ const [expenses, setExpenses] = useState<Expense[]>([]);
   const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
   const [showInvestmentResult, setShowInvestmentResult] = useState(false);
 
-    // ====== SEGURANÇA + PERSISTÊNCIA (NUNCA APAGA NADA) ======
-  
-  // 1. Verifica se já está logado (token)
-  useEffect(() => {
-    const token = localStorage.getItem('budgetProToken');
-    if (token && currentScreen === 'login') {
-      setCurrentScreen('dashboard');
-    }
-  }, [currentScreen]);
-
-  // 2. Carrega os dados financeiros salvos (salário, despesas, investimentos, etc)
-  useEffect(() => {
-    const saved = localStorage.getItem('budgetProData');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (data.salary !== undefined) setSalary(data.salary);
-        if (data.creditLimit !== undefined) setCreditLimit(data.creditLimit);
-        if (data.expenses) setExpenses(data.expenses);
-        if (data.creditBillAmount !== undefined) setCreditBillAmount(data.creditBillAmount);
-        if (data.investments) setInvestments(data.investments);
-      } catch (e) {
-        console.log("Erro ao carregar dados salvos", e);
-      }
-    }
-  }, []);
-
-  // 3. Salva tudo automaticamente quando mudar
-  useEffect(() => {
-    const dataToSave = {
-      salary,
-      creditLimit,
-      expenses,
-      creditBillAmount,
-      investments
-    };
-    localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
-  }, [salary, creditLimit, expenses, creditBillAmount, investments]);
-
-  // ============ CARREGA OS DADOS SALVOS QUANDO O APP INICIA ============
-useEffect(() => {
-  const saved = localStorage.getItem('budgetProData');
-  if (saved) {
-    try {
-      const data = JSON.parse(saved);
-      setSalary(data.salary || 5000);
-      setCreditLimit(data.creditLimit || 3000);
-      setExpenses(data.expenses || []);
-      setCreditBillAmount(data.creditBillAmount || 0);
-      setInvestments(data.investments || MOCK_INVESTMENTS);
-      console.log('Dados carregados do localStorage!');
-    } catch (e) {
-      console.error('Erro ao carregar dados salvos', e);
-    }
-  }
-}, []);
-
-// ============ SALVA AUTOMATICAMENTE SEMPRE QUE ALGO MUDAR ============
-useEffect(() => {
-  const dataToSave = {
-    salary,
-    creditLimit,
-    expenses,
-    creditBillAmount,
-    investments,
-    version: '1.0' // pra futuras migrações
-  };
-  localStorage.setItem('budgetProData', JSON.stringify(dataToSave));
-}, [salary, creditLimit, expenses, creditBillAmount, investments]);
-
   // New state for interactive charts
   const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
 
@@ -292,17 +237,35 @@ useEffect(() => {
     }
   }, [currentScreen]);
 
+  // Dark Mode Effect - Save to localStorage
+  useEffect(() => {
+    localStorage.setItem('budgetProDarkMode', isDarkMode.toString());
+  }, [isDarkMode]);
+
+  // Dark Mode Toggle Component
+  const DarkModeToggle = () => (
+    <button
+      onClick={() => setIsDarkMode(!isDarkMode)}
+      className={`fixed top-4 right-4 z-50 p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 ${
+        isDarkMode ? 'bg-gray-700 text-yellow-300' : 'bg-white text-gray-700'
+      }`}
+      aria-label="Toggle dark mode"
+    >
+      {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+    </button>
+  );
+
   // New financial calculations - Separated by payment method
   const salaryExpenses = React.useMemo(() => 
     expenses.filter(e => e.paymentMethod === 'salary').reduce((sum, expense) => sum + expense.amount, 0), 
     [expenses]
   );
-
+  
   const creditExpenses = React.useMemo(() => 
     expenses.filter(e => e.paymentMethod === 'credit').reduce((sum, expense) => sum + expense.amount, 0), 
     [expenses]
   );
-
+  
   const totalExpenses = React.useMemo(() => salaryExpenses + creditExpenses, [salaryExpenses, creditExpenses]);
 
   // Calculate financial distribution
@@ -311,7 +274,7 @@ useEffect(() => {
     const currentCreditBill = creditExpenses; // Bill amount is credit expenses minus payments
     const currentCreditUsed = currentCreditBill; // Credit used is the bill amount
     const currentDebt = Math.max(0, currentCreditUsed - creditLimit); // Debt if exceeds credit limit
-
+    
     return {
       remainingSalary: salary - currentSalaryUsed,
       availableCredit: creditLimit - currentCreditUsed,
@@ -329,7 +292,7 @@ useEffect(() => {
   const expensePercentage = React.useMemo(() => 
     Math.min(((salaryExpenses / salary) * 100), 100), [salaryExpenses, salary]
   );
-
+  
   const creditPercentage = React.useMemo(() => 
     Math.min(((creditExpenses / creditLimit) * 100), 100), [creditExpenses, creditLimit]
   );
@@ -339,7 +302,7 @@ useEffect(() => {
     const salaryUsedAmount = salaryExpenses + creditBillAmount;
     const creditUsedAmount = creditExpenses;
     const debtAmount = Math.max(0, creditExpenses - creditLimit);
-
+    
     return {
       salaryUsed: salaryUsedAmount,
       creditUsed: creditUsedAmount,
@@ -353,11 +316,11 @@ useEffect(() => {
     if (remainingSalary <= 0) {
       // Notification removed - user controls payment method manually now
     }
-
+    
     if (financialBreakdown.debt > 0) {
       alert(`🚨 Você ultrapassou o limite do cartão. Agora está devendo ao banco R$ ${financialBreakdown.debt.toFixed(2)}!`);
     }
-
+    
     if (creditBill > creditLimit * 0.9) {
       // High credit usage warning
     }
@@ -422,7 +385,7 @@ useEffect(() => {
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
     const user = users.find((u: any) => u.email === email && u.password === password);
-
+    
     if (user) {
       localStorage.setItem('currentUser', JSON.stringify(user));
       setCurrentScreen('dashboard');
@@ -448,7 +411,7 @@ useEffect(() => {
     }
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-
+    
     // Check if email already exists
     if (users.some((u: any) => u.email === email)) {
       alert('Este email já está cadastrado. Tente fazer login.');
@@ -459,14 +422,14 @@ useEffect(() => {
     const newUser = { id: Date.now(), name, email, password, cpf };
     users.push(newUser);
     localStorage.setItem('budgetProUsers', JSON.stringify(users));
-
+    
     // Clear form and go back to login
     setName('');
     setEmail('');
     setPassword('');
     setConfirmPassword('');
     setCpf('');
-
+    
     alert('Conta criada com sucesso! Faça login para continuar.');
     setCurrentScreen('login');
   }, [name, email, password, confirmPassword, cpf]);
@@ -479,7 +442,7 @@ useEffect(() => {
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
     const user = users.find((u: any) => u.email === resetEmail);
-
+    
     if (user) {
       // Store email for password reset
       localStorage.setItem('resetEmail', resetEmail);
@@ -515,16 +478,16 @@ useEffect(() => {
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
     const userIndex = users.findIndex((u: any) => u.email === email);
-
+    
     if (userIndex !== -1) {
       users[userIndex].password = newPassword;
       localStorage.setItem('budgetProUsers', JSON.stringify(users));
       localStorage.removeItem('resetEmail');
-
+      
       setNewPassword('');
       setConfirmNewPassword('');
       setResetEmail('');
-
+      
       alert('Senha alterada com sucesso! Faça login com sua nova senha.');
       setCurrentScreen('login');
     } else {
@@ -537,7 +500,7 @@ useEffect(() => {
     if (newCategory && newAmount) {
       const iconTypes: IconType[] = ['shopping', 'smartphone', 'coffee'];
       const randomIconType = iconTypes[Math.floor(Math.random() * iconTypes.length)];
-
+      
       setExpenses(prev => [
         ...prev,
         {
@@ -552,30 +515,30 @@ useEffect(() => {
       setNewAmount('');
     }
   }, [newCategory, newAmount]);
-
+  
   // Function to pay credit card bill
   const payCreditBill = React.useCallback(() => {
     const paymentAmount = parseFloat(billPaymentAmount);
-
+    
     if (!billPaymentAmount || paymentAmount <= 0) {
       alert('Digite um valor válido para o pagamento.');
       return;
     }
-
+    
     if (paymentAmount > creditBill) {
       alert(`O valor do pagamento não pode ser maior que a fatura (R$ ${creditBill.toFixed(2)}).`);
       return;
     }
-
+    
     if (paymentAmount > remainingSalary) {
       alert(`Você não tem saldo suficiente no salário (R$ ${remainingSalary.toFixed(2)}).`);
       return;
     }
-
+    
     // Update credit bill amount paid
     setCreditBillAmount(prev => prev + paymentAmount);
     setBillPaymentAmount('');
-
+    
     alert(`✅ Pagamento de R$ ${paymentAmount.toFixed(2)} realizado com sucesso!`);
   }, [billPaymentAmount, creditBill, remainingSalary]);
 
@@ -649,7 +612,7 @@ useEffect(() => {
     setInvestmentAmount('');
     setPurchaseConfirmed(false);
     setCurrentScreen('investment-result');
-
+    
     // Show result after brief delay
     setTimeout(() => setShowInvestmentResult(true), 1000);
   }, [selectedInvestment, investmentAmount, remainingSalary, availableCredit]);
@@ -682,7 +645,7 @@ useEffect(() => {
       color: colors[index % colors.length]
     }));
   }, [expenses]);
-
+  
   // Pie chart data with colors - CREDIT expenses
   const creditPieChartData = React.useMemo(() => {
     const colors = ['#8B5CF6', '#EC4899', '#F59E0B', '#EF4444', '#06B6D4', '#10B981'];
@@ -694,56 +657,27 @@ useEffect(() => {
     }));
   }, [expenses]);
 
-// Enhanced monthly data with real-time saving
-const [monthlyData, setMonthlyData] = useState(() => {
-  const saved = localStorage.getItem("monthlyData");
-  return saved ? JSON.parse(saved) : [];
-});
-
-
-// Atualiza o gráfico sempre que mudar o salário ou gastos
-useEffect(() => {
-  const currentMonth = new Date().toLocaleString("pt-BR", { month: "short" });
-  const existingMonth = monthlyData.find((m) => m.month === currentMonth);
-
-  // Se ninguém investiu, usa 0
-  const investimentosCliente = 0;
-
-  let updated;
-  if (existingMonth) {
-    updated = monthlyData.map((m) =>
-      m.month === currentMonth
-        ? { ...m, receitas: salary, gastos: totalExpenses, investimentos: investimentosCliente }
-        : m
-    );
-  } else {
-    updated = [
-      ...monthlyData,
-      { month: currentMonth, receitas: salary, gastos: totalExpenses, investimentos: investimentosCliente },
-    ];
-  }
-
-  setMonthlyData(updated);
-  localStorage.setItem("monthlyData", JSON.stringify(updated));
-}, [salary, totalExpenses]);
-
-
+  // Enhanced monthly data with financial breakdown
+  const monthlyData = React.useMemo(() => [
+    { month: 'Jan', receitas: 3000, gastos: 2200, investimentos: 300 },
+    { month: 'Fev', receitas: 3000, gastos: 2500, investimentos: 200 },
+    { month: 'Mar', receitas: salary, gastos: totalExpenses, investimentos: 150 },
+  ], [salary, totalExpenses]);
 
   // 🔵 1. Gráfico de Pizza (Distribuição de Recursos) - DATA
   const financialDistributionPieData = React.useMemo(() => {
     const data = [];
-
-// Salário disponível (azul ou vermelho se negativo)
-const availableSalary = salary - salaryUsed;
-
-data.push({
-  name: availableSalary >= 0 ? 'Salário Disponível' : 'Saldo Negativo',
-  value: Math.abs(availableSalary),
-  color: availableSalary >= 0 ? '#046BF4' : '#FF4C4C', // Azul se positivo, vermelho se negativo
-  percentage: ((Math.abs(availableSalary) / (salary + creditLimit)) * 100).toFixed(1)
-});
-
-
+    
+    // Salário disponível (azul)
+    if (remainingSalary > 0) {
+      data.push({
+        name: 'Salário Disponível',
+        value: remainingSalary,
+        color: '#046BF4', // Azul
+        percentage: ((remainingSalary / (salary + creditLimit)) * 100).toFixed(1)
+      });
+    }
+    
     // Dívida bancária (vermelho)
     if (totalDebt > 0) {
       data.push({
@@ -753,7 +687,7 @@ data.push({
         percentage: ((totalDebt / (salary + creditLimit)) * 100).toFixed(1)
       });
     }
-
+    
     // Cartão usado (roxo)
     if (financialBreakdown.creditUsed > 0) {
       data.push({
@@ -763,7 +697,7 @@ data.push({
         percentage: ((financialBreakdown.creditUsed / (salary + creditLimit)) * 100).toFixed(1)
       });
     }
-
+    
     // Salário usado (verde)
     if (financialBreakdown.salaryUsed > 0) {
       data.push({
@@ -773,7 +707,7 @@ data.push({
         percentage: ((financialBreakdown.salaryUsed / (salary + creditLimit)) * 100).toFixed(1)
       });
     }
-
+    
     // Cartão disponível (azul claro)
     if (availableCredit > 0) {
       data.push({
@@ -783,7 +717,7 @@ data.push({
         percentage: ((availableCredit / (salary + creditLimit)) * 100).toFixed(1)
       });
     }
-
+    
     return data;
   }, [remainingSalary, totalDebt, financialBreakdown, availableCredit, salary, creditLimit]);
 
@@ -801,6 +735,7 @@ data.push({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.6 }}
       >
+        <DarkModeToggle />
         {/* Logo - Mobile First */}
         <div className="mb-8">
           <img 
@@ -818,7 +753,7 @@ data.push({
             const radius = 28; // Fixed radius for consistency
             const x = Math.cos(radian) * radius;
             const y = Math.sin(radian) * radius;
-
+            
             return (
               <motion.div
                 key={index}
@@ -859,58 +794,52 @@ data.push({
   if (currentScreen === 'login') {
     return (
       <motion.div 
-        className="min-h-screen"
-        style={{ background: 'linear-gradient(to bottom, #046BF4, white)' }}
+        className={`min-h-screen ${isDarkMode ? '' : ''}`}
+        style={isDarkMode ? { background: 'linear-gradient(to bottom, #0f172a, #1e3a8a, #000000)' } : { background: 'linear-gradient(to bottom, #046BF4, white)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header - Mobile First */}
-        <div className="px-4 py-8 text-center">
-          <h1 className="text-white text-3xl md:text-4xl lg:text-5xl mb-2 font-bold">BudgetPro</h1>
-          <p className="text-white/80 text-sm md:text-base hidden sm:block">
-            Seu assistente financeiro pessoal
-          </p>
-        </div>
+        <DarkModeToggle />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="px-4 py-4"
+          className="px-4 py-8 pt-20"
         >
           {/* Container - Mobile First (375px optimized) */}
           <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
             <div className="text-center mb-6">
-              <h2 className="text-xl md:text-2xl lg:text-3xl mb-2 text-white font-semibold">
+              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white'}`}>
                 Bem-vindo de volta!
               </h2>
-              <p className="text-gray-200 text-sm md:text-base px-2">
+              <p className={`text-sm md:text-base px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-200'}`}>
                 Entre na sua conta para acessar suas finanças
               </p>
             </div>
 
-            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm rounded-2xl">
+            <Card className={`shadow-xl border-0 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white/95 backdrop-blur-sm'}`}>
               <CardContent className="p-5 md:p-6 space-y-4">
                 <div className="space-y-4">
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Mail className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="email"
                       placeholder="Digite seu email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="password"
                       placeholder="Digite sua senha"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                 </div>
@@ -927,8 +856,8 @@ data.push({
                   <div>
                     <button
                       onClick={() => setCurrentScreen('forgot-password')}
-                      className="text-sm transition-colors hover:brightness-110"
-                      style={{ color: '#046BF4' }}
+                      className={`text-sm transition-colors hover:brightness-110 ${isDarkMode ? 'text-sky-400' : ''}`}
+                      style={!isDarkMode ? { color: '#046BF4' } : {}}
                     >
                       <span className="underline">Esqueceu sua senha?</span>
                     </button>
@@ -936,8 +865,8 @@ data.push({
                   <div>
                     <button
                       onClick={() => setCurrentScreen('signup')}
-                      className="text-sm transition-colors hover:brightness-110"
-                      style={{ color: '#046BF4' }}
+                      className={`text-sm transition-colors hover:brightness-110 ${isDarkMode ? 'text-sky-400' : ''}`}
+                      style={!isDarkMode ? { color: '#046BF4' } : {}}
                     >
                       Ainda não tem conta? <span className="underline">Criar conta</span>
                     </button>
@@ -955,85 +884,76 @@ data.push({
   if (currentScreen === 'signup') {
     return (
       <motion.div 
-        className="min-h-screen"
-        style={{ background: 'linear-gradient(135deg, #046BF4 0%, #2A9DF4 50%, white 100%)' }}
+        className={`min-h-screen ${isDarkMode ? '' : ''}`}
+        style={isDarkMode ? { background: 'linear-gradient(to bottom, #0f172a, #1e3a8a, #000000)' } : { background: 'linear-gradient(135deg, #046BF4 0%, #2A9DF4 50%, white 100%)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header - Mobile First */}
-        <div className="px-4 py-8 text-center">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl mb-2 font-bold" style={{ color: '#046BF4' }}>BudgetPro</h1>
-          <h2 className="text-lg md:text-2xl lg:text-3xl text-gray-700 md:text-white/90 font-semibold">Criar Nova Conta</h2>
-          <p className="text-sm text-gray-600 md:text-white/80 mt-2 hidden sm:block">
-            Transforme sua relação com o dinheiro
-          </p>
-        </div>
+        <DarkModeToggle />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="px-4 py-4"
+          className="px-4 py-8 pt-20"
         >
           {/* Container - Mobile First (375px optimized) */}
           <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
-            <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm rounded-2xl">
+            <div className="text-center mb-6">
+              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white md:text-[#046BF4]'}`}>
+                Criar Nova Conta
+              </h2>
+              <p className={`text-sm md:text-base px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-200'}`}>
+                Transforme sua relação com o dinheiro
+              </p>
+            </div>
+            <Card className={`shadow-xl border-0 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white/95 backdrop-blur-sm'}`}>
               <CardContent className="p-5 md:p-6 space-y-4">
                 <div className="space-y-4">
                   <div className="relative">
-                    <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <User className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="text"
                       placeholder="Digite seu nome completo *"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Mail className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="email"
                       placeholder="Digite seu email *"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="password"
                       placeholder="Digite sua senha *"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="password"
                       placeholder="Confirme sua senha *"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
-                    />
-                  </div>
-                  <div className="relative">
-                    <FileText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder="Digite seu CPF (opcional)"
-                      value={cpf}
-                      onChange={(e) => setCpf(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                 </div>
 
-                <div className="text-xs text-gray-500 text-center bg-gray-50 p-3 rounded-xl">
+                <div className={`text-xs text-center p-3 rounded-xl ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-500'}`}>
                   <span className="font-medium">* Campos obrigatórios</span>
                 </div>
 
@@ -1048,8 +968,8 @@ data.push({
                 <div className="text-center pt-4">
                   <button
                     onClick={() => setCurrentScreen('login')}
-                    className="text-sm transition-colors hover:brightness-110"
-                    style={{ color: '#046BF4' }}
+                    className={`text-sm transition-colors hover:brightness-110 ${isDarkMode ? 'text-sky-400' : ''}`}
+                    style={!isDarkMode ? { color: '#046BF4' } : {}}
                   >
                     Já tem conta? <span className="underline">Voltar ao login</span>
                   </button>
@@ -1066,40 +986,40 @@ data.push({
   if (currentScreen === 'forgot-password') {
     return (
       <motion.div 
-        className="min-h-screen bg-gray-50"
+        className={`min-h-screen ${isDarkMode ? '' : ''}`}
+        style={isDarkMode ? { background: 'linear-gradient(to bottom, #0f172a, #1e3a8a, #000000)' } : { background: 'linear-gradient(to bottom, #046BF4, white)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header - Mobile First */}
-        <div className="px-4 py-8 text-center">
-          <h1 className="text-3xl mb-2 font-bold" style={{ color: '#046BF4' }}>BudgetPro</h1>
-          <h2 className="text-xl text-gray-700">Esqueceu sua senha?</h2>
-        </div>
+        <DarkModeToggle />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="px-4 py-4"
+          className="px-4 py-8 pt-20"
         >
           <div className="max-w-sm mx-auto">
             <div className="text-center mb-6">
-              <p className="text-gray-600">
+              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white'}`}>
+                Esqueceu sua senha?
+              </h2>
+              <p className={`text-sm md:text-base px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-200'}`}>
                 Digite seu email para receber um link de recuperação
               </p>
             </div>
 
-            <Card className="shadow-xl border-0 bg-white rounded-2xl">
+            <Card className={`shadow-xl border-0 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <CardContent className="p-5 space-y-4">
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                   <Input
                     type="email"
                     placeholder="Digite seu email"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                    className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                   />
                 </div>
 
@@ -1114,8 +1034,8 @@ data.push({
                 <div className="text-center pt-4">
                   <button
                     onClick={() => setCurrentScreen('login')}
-                    className="text-sm transition-colors hover:brightness-110"
-                    style={{ color: '#046BF4' }}
+                    className={`text-sm transition-colors hover:brightness-110 ${isDarkMode ? 'text-sky-400' : ''}`}
+                    style={!isDarkMode ? { color: '#046BF4' } : {}}
                   >
                     <span className="underline">Voltar ao login</span>
                   </button>
@@ -1132,51 +1052,51 @@ data.push({
   if (currentScreen === 'reset-password') {
     return (
       <motion.div 
-        className="min-h-screen bg-gray-50"
+        className={`min-h-screen ${isDarkMode ? '' : ''}`}
+        style={isDarkMode ? { background: 'linear-gradient(to bottom, #0f172a, #1e3a8a, #000000)' } : { background: 'linear-gradient(to bottom, #046BF4, white)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Header - Mobile First */}
-        <div className="px-4 py-8 text-center">
-          <h1 className="text-3xl mb-2 font-bold" style={{ color: '#046BF4' }}>BudgetPro</h1>
-          <h2 className="text-xl text-gray-700">Redefinir Senha</h2>
-        </div>
+        <DarkModeToggle />
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="px-4 py-4"
+          className="px-4 py-8 pt-20"
         >
           <div className="max-w-sm mx-auto">
             <div className="text-center mb-6">
-              <p className="text-gray-600">
+              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white'}`}>
+                Redefinir Senha
+              </h2>
+              <p className={`text-sm md:text-base px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-200'}`}>
                 Digite sua nova senha
               </p>
             </div>
 
-            <Card className="shadow-xl border-0 bg-white rounded-2xl">
+            <Card className={`shadow-xl border-0 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
               <CardContent className="p-5 space-y-4">
                 <div className="space-y-4">
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="password"
                       placeholder="Nova senha"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                    <Lock className={`absolute left-3 top-3 h-5 w-5 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                     <Input
                       type="password"
                       placeholder="Confirmar nova senha"
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
-                      className="pl-11 h-12 rounded-xl border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all"
+                      className={`pl-11 h-12 rounded-xl focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-all ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white placeholder:text-gray-400' : 'border-gray-200'}`}
                     />
                   </div>
                 </div>
@@ -1192,8 +1112,8 @@ data.push({
                 <div className="text-center pt-4">
                   <button
                     onClick={() => setCurrentScreen('login')}
-                    className="text-sm transition-colors hover:brightness-110"
-                    style={{ color: '#046BF4' }}
+                    className={`text-sm transition-colors hover:brightness-110 ${isDarkMode ? 'text-sky-400' : ''}`}
+                    style={!isDarkMode ? { color: '#046BF4' } : {}}
                   >
                     <span className="underline">Voltar ao login</span>
                   </button>
@@ -1209,7 +1129,8 @@ data.push({
   // 🟦 DASHBOARD SCREEN - Mobile First (375px optimized)
   if (currentScreen === 'dashboard') {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
+        <DarkModeToggle />
         {/* Header - Mobile First */}
         <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <div className="flex items-center justify-between">
@@ -1224,12 +1145,12 @@ data.push({
                 <p className="text-white/80 text-xs md:text-sm hidden sm:block">Suas finanças</p>
               </div>
             </div>
-
-           {/* Quick info - Mobile */}
-               <div className="text-right text-white">
+            
+            {/* Quick info - Mobile */}
+            <div className="text-right text-white">
               <p className="text-xs text-white/80">Disponível</p>
-             <p className="text-sm font-semibold">R$ {(remainingSalary + availableCredit).toFixed(2)}</p>
-           </div>
+              <p className="text-sm font-semibold">R$ {(remainingSalary + availableCredit).toFixed(2)}</p>
+            </div>
           </div>
         </div>
 
@@ -1284,76 +1205,76 @@ data.push({
               {/* Financial Cards - Mobile Grid */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {/* Income Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-green-100">
                         <ArrowUpRight className="w-4 h-4 text-green-600" />
                       </div>
-                      <span className="text-xs text-gray-500 uppercase">Receitas</span>
+                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Receitas</span>
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-green-600">R$ {salary.toFixed(2)}</p>
-                      <p className="text-xs text-gray-600">Salário mensal</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Salário mensal</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Expenses Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-red-100">
                         <ArrowDownRight className="w-4 h-4 text-red-600" />
                       </div>
-                      <span className="text-xs text-gray-500 uppercase">Gastos Salário</span>
+                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Gastos Salário</span>
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-red-600">R$ {salaryExpenses.toFixed(2)}</p>
-                      <p className="text-xs text-gray-600">Pagos com salário</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pagos com salário</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Available Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg" style={{ backgroundColor: '#e0f2fe' }}>
                         <DollarSign className="w-4 h-4" style={{ color: '#046BF4' }} />
                       </div>
-                      <span className="text-xs text-gray-500 uppercase">Disponível</span>
+                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Disponível</span>
                     </div>
                     <div>
                       <p className="text-lg font-semibold" style={{ color: '#046BF4' }}>
                         R$ {remainingSalary.toFixed(2)}
                       </p>
-                      <p className="text-xs text-gray-600">Salário restante</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Salário restante</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Credit Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow">
+                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="p-2 rounded-lg bg-purple-100">
                         <CreditCard className="w-4 h-4 text-purple-600" />
                       </div>
-                      <span className="text-xs text-gray-500 uppercase">Cartão</span>
+                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Cartão</span>
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-purple-600">R$ {availableCredit.toFixed(2)}</p>
-                      <p className="text-xs text-gray-600">Limite livre</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Limite livre</p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Progress Summary - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
                       <BarChart3 className="w-4 h-4 text-white" />
                     </div>
@@ -1363,8 +1284,8 @@ data.push({
                 <CardContent>
                   <div className="mb-3">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm">Você gastou {Math.round(expensePercentage)}% da sua renda</span>
-                      <span className="text-sm font-semibold">{Math.round(expensePercentage)}%</span>
+                      <span className={`text-sm ${isDarkMode ? 'text-white' : ''}`}>Você gastou {Math.round(expensePercentage)}% da sua renda</span>
+                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : ''}`}>{Math.round(expensePercentage)}%</span>
                     </div>
                     <Progress 
                       value={expensePercentage} 
@@ -1373,13 +1294,13 @@ data.push({
                         '--progress-background': expensePercentage > 80 ? '#EF4444' : expensePercentage > 60 ? '#F59E0B' : '#046BF4'
                       } as React.CSSProperties}
                     />
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {expensePercentage > 90 ? '🚨 Gastos muito altos!' :
                        expensePercentage > 70 ? '⚠️ Cuidado com os gastos' :
                        '✅ Gastos controlados'}
                     </p>
                   </div>
-
+                  
                   {/* Progress Ring - Mobile Center */}
                   <div className="flex justify-center mt-4">
                     <ProgressRing 
@@ -1392,9 +1313,9 @@ data.push({
               </Card>
 
               {/* Line Chart - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
                       <TrendingUp className="w-4 h-4 text-white" />
                     </div>
@@ -1467,15 +1388,15 @@ data.push({
               </Card>
 
               {/* Pie Chart - Mobile */}
-              <Card className="shadow-md border-0 rounded-xl mb-4">
+              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm">
+                  <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
                       <PieChart className="w-4 h-4 text-white" />
                     </div>
                     Distribuição de Recursos
                   </CardTitle>
-                  <p className="text-xs text-gray-600">
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                     Toque nas fatias para detalhes
                   </p>
                 </CardHeader>
@@ -1522,7 +1443,7 @@ data.push({
                           </RechartsPieChart>
                         </ResponsiveContainer>
                       </div>
-
+                      
                       {/* Legend Mobile */}
                       <div className="space-y-2">
                         {financialDistributionPieData.map((item, index) => (
@@ -1699,30 +1620,30 @@ data.push({
             <TabsContent value="boards" className="space-y-4">
               {/* Header - Desktop e Mobile */}
               <div className="mb-4">
-                <h2 className="text-lg font-semibold text-gray-800 mb-1">📋 Pranchetas de Gastos</h2>
-                <p className="text-sm text-gray-600">Gerencie seus gastos de salário e cartão de crédito</p>
+                <h2 className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📋 Pranchetas de Gastos</h2>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Gerencie seus gastos de salário e cartão de crédito</p>
               </div>
 
               {/* Side by Side Boards - Responsive */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
+                
                 {/* LEFT BOARD: SALARY EXPENSES */}
                 <div className="space-y-4">
                   {/* Summary Card - Salary */}
-                  <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-green-50 to-blue-50">
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : 'bg-gradient-to-br from-green-50 to-blue-50'}`}>
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">💰 Salário Total</span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💰 Salário Total</span>
                           <span className="font-semibold text-green-600">R$ {salary.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">💸 Total Gasto</span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💸 Total Gasto</span>
                           <span className="font-semibold text-red-600">R$ {salaryExpenses.toFixed(2)}</span>
                         </div>
-                        <div className="h-px bg-gray-300 my-2"></div>
+                        <div className={`h-px my-2 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-800">✅ Saldo Restante</span>
+                          <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>✅ Saldo Restante</span>
                           <span className="font-bold text-lg" style={{ color: '#046BF4' }}>R$ {remainingSalary.toFixed(2)}</span>
                         </div>
                       </div>
@@ -1731,9 +1652,9 @@ data.push({
 
                   {/* Progress and Charts - Salary */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-xs">Uso do Orçamento</CardTitle>
+                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Uso do Orçamento</CardTitle>
                       </CardHeader>
                       <CardContent className="flex flex-col items-center py-2">
                         <ProgressRing 
@@ -1741,16 +1662,16 @@ data.push({
                           size={80}
                           color={expensePercentage > 80 ? '#EF4444' : expensePercentage > 60 ? '#F59E0B' : '#046BF4'}
                         />
-                        <p className="text-xs text-gray-500 mt-2 text-center">
+                        <p className={`text-xs mt-2 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {expensePercentage > 80 ? 'Apertado!' : 
                            expensePercentage > 60 ? 'Atenção' : 'Controlado'}
                         </p>
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-xs">Por Categoria</CardTitle>
+                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Por Categoria</CardTitle>
                       </CardHeader>
                       <CardContent className="py-2">
                         {salaryPieChartData.length > 0 ? (
@@ -1786,15 +1707,15 @@ data.push({
                   </div>
 
                   {/* Expense Management - Salary */}
-                  <Card className="shadow-md border-0 rounded-xl">
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                         <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
                           <ShoppingCart className="w-4 h-4 text-white" />
                         </div>
                         💵 Prancheta de Gastos do Salário
                       </CardTitle>
-                      <div className="text-xs text-gray-600">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         Gastos pagos com dinheiro do salário
                       </div>
                     </CardHeader>
@@ -1864,7 +1785,7 @@ data.push({
                             </motion.div>
                           );
                         })}
-
+                        
                         {/* Empty state - Salary */}
                         {expenses.filter(e => e.paymentMethod === 'salary').length === 0 && (
                           <div className="text-center py-8 text-gray-500">
@@ -1881,20 +1802,20 @@ data.push({
                 {/* RIGHT BOARD: CREDIT CARD EXPENSES */}
                 <div className="space-y-4">
                   {/* Summary Card - Credit */}
-                  <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50">
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : 'bg-gradient-to-br from-purple-50 to-pink-50'}`}>
                     <CardContent className="p-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">💳 Limite Total</span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💳 Limite Total</span>
                           <span className="font-semibold text-purple-600">R$ {creditLimit.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-700">💸 Valor Gasto</span>
+                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💸 Valor Gasto</span>
                           <span className="font-semibold text-red-600">R$ {creditExpenses.toFixed(2)}</span>
                         </div>
-                        <div className="h-px bg-gray-300 my-2"></div>
+                        <div className={`h-px my-2 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-800">✅ Limite Restante</span>
+                          <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>✅ Limite Restante</span>
                           <span className="font-bold text-lg text-purple-600">R$ {availableCredit.toFixed(2)}</span>
                         </div>
                       </div>
@@ -1903,9 +1824,9 @@ data.push({
 
                   {/* Progress and Charts - Credit */}
                   <div className="grid grid-cols-2 gap-3">
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-xs">Uso do Cartão</CardTitle>
+                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Uso do Cartão</CardTitle>
                       </CardHeader>
                       <CardContent className="flex flex-col items-center py-2">
                         <ProgressRing 
@@ -1913,16 +1834,16 @@ data.push({
                           size={80}
                           color={creditPercentage > 80 ? '#EF4444' : creditPercentage > 60 ? '#F59E0B' : '#8B5CF6'}
                         />
-                        <p className="text-xs text-gray-500 mt-2 text-center">
+                        <p className={`text-xs mt-2 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           {creditPercentage > 80 ? 'Quase cheio!' : 
                            creditPercentage > 60 ? 'Cuidado' : 'Controlado'}
                         </p>
                       </CardContent>
                     </Card>
 
-                    <Card className="shadow-md border-0 rounded-xl">
+                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-xs">Por Categoria</CardTitle>
+                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Por Categoria</CardTitle>
                       </CardHeader>
                       <CardContent className="py-2">
                         {creditPieChartData.length > 0 ? (
@@ -1958,15 +1879,15 @@ data.push({
                   </div>
 
                   {/* Expense Management - Credit */}
-                  <Card className="shadow-md border-0 rounded-xl">
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-sm">
+                      <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                         <div className="p-2 rounded-lg bg-purple-500">
                           <CreditCard className="w-4 h-4 text-white" />
                         </div>
                         💳 Prancheta de Gastos do Cartão
                       </CardTitle>
-                      <div className="text-xs text-gray-600">
+                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         Gastos feitos no cartão de crédito
                       </div>
                     </CardHeader>
@@ -2035,7 +1956,7 @@ data.push({
                             </motion.div>
                           );
                         })}
-
+                        
                         {/* Empty state - Credit */}
                         {expenses.filter(e => e.paymentMethod === 'credit').length === 0 && (
                           <div className="text-center py-8 text-gray-500">
@@ -2174,7 +2095,7 @@ data.push({
                         </p>
                       </div>
                     </div>
-
+                    
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500"></div>
@@ -2211,7 +2132,7 @@ data.push({
                       {investments.map((investment) => {
                         const IconComponent = investment.icon;
                         const isAffordable = remainingSalary >= investment.minInvestment;
-
+                        
                         return (
                           <motion.div
                             key={investment.id}
@@ -2263,8 +2184,8 @@ data.push({
                                 )}
                               </div>
                             </div>
-
-                                                   {investment.status === 'purchased' && investment.profitLoss !== undefined && (
+                            
+                            {investment.status === 'purchased' && investment.profitLoss !== undefined && (
                               <div className="mt-3 pt-3 border-t border-gray-100">
                                 <div className="flex items-center justify-between text-xs">
                                   <span>Investido: R$ {investment.purchaseAmount?.toFixed(2)}</span>
@@ -2294,6 +2215,7 @@ data.push({
       </div>
     );
   }
+
   // Continue with other screens (investment details, etc.) - keeping them as they were for now
   // Investment Details Screen
   if (currentScreen === 'investment-details') {
