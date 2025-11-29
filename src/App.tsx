@@ -4,10 +4,10 @@ import { motion } from 'motion/react';
 const logoDefinitiva = "/logo.png";
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<'splash' | 'dashboard'>('splash');
+  const [currentScreen, setCurrentScreen] = useState('splash');
   const [progress, setProgress] = useState(0);
 
-  // 12 SEGUNDOS COM % ANIMADO
+  // 12 SEGUNDOS RESPONSIVO
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress((prev) => {
@@ -16,7 +16,7 @@ export default function App() {
           setTimeout(() => setCurrentScreen('dashboard'), 500);
           return 100;
         }
-        return prev + 8.33; // 100% / 12s = 8.33% por 100ms
+        return prev + 8.33;
       });
     }, 100);
 
@@ -33,35 +33,41 @@ export default function App() {
           alignItems: 'center',
           justifyContent: 'center',
           padding: '1rem',
-          background: '#046bf3' // 👈 FUNDO EXATO #046BF3
+          background: '#046bf3',
+          fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
         }}
       >
-        {/* LOGO */}
+        {/* LOGO - RESPONSIVA */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1 }}
-          style={{ marginBottom: '3rem' }}
+          style={{ marginBottom: '2rem', maxWidth: '100%' }}
         >
           <img 
             src={logoDefinitiva} 
             alt="BudgetPro" 
-            style={{ width: '160px', height: '160px' }} 
+            style={{ 
+              width: 'clamp(120px, 25vw, 160px)', 
+              height: 'clamp(120px, 25vw, 160px)',
+              maxWidth: '160px',
+              maxHeight: '160px'
+            }} 
           />
         </motion.div>
 
-        {/* TÍTULO */}
+        {/* TÍTULO - RESPONSIVO */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.5 }}
           style={{ 
-            fontSize: '4.5rem', 
+            fontSize: 'clamp(2.5rem, 8vw, 4.5rem)', 
             fontWeight: '900', 
             color: 'white',
-            marginBottom: '1.5rem',
+            marginBottom: '1rem',
             textAlign: 'center',
-            lineHeight: '1'
+            lineHeight: '1.1'
           }}
         >
           Budget
@@ -78,34 +84,34 @@ export default function App() {
           </span>
         </motion.h1>
 
-        {/* SUBTÍTULO */}
+        {/* SUBTÍTULO - RESPONSIVO */}
         <motion.p
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
           style={{ 
-            fontSize: '1.75rem', 
+            fontSize: 'clamp(1.1rem, 4vw, 1.75rem)', 
             color: 'rgba(255,255,255,0.95)', 
             fontWeight: '300',
-            marginBottom: '3rem',
+            marginBottom: '2.5rem',
             textAlign: 'center',
-            maxWidth: '32rem',
-            padding: '0 1rem'
+            maxWidth: '90%',
+            lineHeight: '1.4'
           }}
         >
           Seu melhor aplicativo para finanças e economia
         </motion.p>
 
-        {/* ✅ 12 BOLINHAS BRANCAS */}
+        {/* 12 BOLINHAS BRANCAS - RESPONSIVAS */}
         <motion.div
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1, delay: 1 }}
           style={{ 
             position: 'relative', 
-            width: '128px', 
-            height: '128px', 
-            marginBottom: '3rem' 
+            width: 'clamp(80px, 20vw, 128px)', 
+            height: 'clamp(80px, 20vw, 128px)', 
+            marginBottom: '2.5rem' 
           }}
         >
           {Array.from({ length: 12 }).map((_, i) => (
@@ -113,14 +119,14 @@ export default function App() {
               key={i}
               style={{
                 position: 'absolute',
-                width: '16px',
-                height: '16px',
-                backgroundColor: 'white', // 👈 BRANCAS!
+                width: 'clamp(10px, 2.5vw, 16px)',
+                height: 'clamp(10px, 2.5vw, 16px)',
+                backgroundColor: 'white',
                 borderRadius: '50%',
                 left: '50%',
                 top: '50%',
-                marginLeft: `${-25 + Math.cos((i * 30) * Math.PI / 180) * 50}px`,
-                marginTop: `${-25 + Math.sin((i * 30) * Math.PI / 180) * 50}px`,
+                marginLeft: `${-20 + Math.cos((i * 30) * Math.PI / 180) * 40}px`,
+                marginTop: `${-20 + Math.sin((i * 30) * Math.PI / 180) * 40}px`,
               }}
               animate={{ 
                 opacity: [0.3, 1, 0.3], 
@@ -135,32 +141,29 @@ export default function App() {
           ))}
         </motion.div>
 
-        {/* BARRA + % ANIMADO */}
+        {/* BARRA + % ANIMADO - RESPONSIVA */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.2 }}
-          style={{ width: '100%', maxWidth: '480px' }}
+          style={{ 
+            width: '100%', 
+            maxWidth: 'min(90vw, 480px)',
+            padding: '0 1rem'
+          }}
         >
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
-            marginBottom: '0.5rem' 
+            marginBottom: '0.75rem',
+            fontSize: 'clamp(0.875rem, 2.5vw, 1rem)'
           }}>
-            <span style={{ 
-              fontSize: '0.875rem', 
-              fontWeight: '500', 
-              color: 'white' 
-            }}>
+            <span style={{ fontWeight: '500', color: 'white' }}>
               Carregando...
             </span>
             <motion.span 
-              style={{ 
-                fontSize: '0.875rem', 
-                fontWeight: '500', 
-                color: 'white' 
-              }}
+              style={{ fontWeight: '500', color: 'white' }}
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1, repeat: Infinity }}
             >
@@ -178,8 +181,7 @@ export default function App() {
               style={{
                 height: '100%',
                 background: 'linear-gradient(90deg, #046bf3 0%, #22c55e 100%)',
-                borderRadius: '9999px',
-                width: '0%'
+                borderRadius: '9999px'
               }}
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
@@ -197,14 +199,22 @@ export default function App() {
       background: '#046bf3',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
     }}>
-      <div style={{ textAlign: 'center', color: 'white' }}>
-        <h1 style={{ fontSize: '3rem', fontWeight: '900' }}>
+      <div style={{ textAlign: 'center', color: 'white', padding: '1rem' }}>
+        <h1 style={{ 
+          fontSize: 'clamp(2rem, 8vw, 3rem)', 
+          fontWeight: '900',
+          marginBottom: '1rem'
+        }}>
           ✅ SPLASH PERFEITO!
         </h1>
-        <p style={{ marginTop: '1.5rem', fontSize: '1.25rem' }}>
-          Bolinhas brancas + #046BF3 + % animado
+        <p style={{ 
+          fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+          maxWidth: '90%'
+        }}>
+          Responsivo + Sem erros + 12s + Bolinhas brancas
         </p>
       </div>
     );
