@@ -38,10 +38,13 @@ import {
   Coins,
   Rocket,
   Moon,
-  Sun
+  Sun,
+  Edit2,
+  ChevronDown
 } from 'lucide-react';
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, Pie } from 'recharts';
-import logoDefinitiva from '@/assets/logo.png';
+import logoDefinitiva from 'figma:asset/0314ca9ef2ad7a1d30a0d23fdfefdf6f06ebf23c.png';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
 type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard' | 'investment-details' | 'investment-purchase' | 'investment-result';
 type IconType = 'coffee' | 'car' | 'home' | 'shopping' | 'smartphone';
@@ -54,7 +57,10 @@ interface Expense {
   category: string;
   amount: number;
   iconType: IconType;
-  paymentMethod: PaymentMethod; // 'salary' para gastos do salário, 'credit' para cartão
+  paymentMethod: PaymentMethod;
+  installments?: number;
+  totalInstallments?: number;
+  dueDate?: string;
 }
 
 interface Investment {
@@ -76,7 +82,7 @@ interface Investment {
   profitLoss?: number;
 }
 
-// Icon mapping to prevent recreation on every render
+// Icon mapping
 const iconMap = {
   coffee: Coffee,
   car: Car,
@@ -179,12 +185,20 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
-  const [cpf, setCpf] = useState('');
   const [resetEmail, setResetEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [salary, setSalary] = useState(3000);
-  const [creditLimit, setCreditLimit] = useState(2000);
+  
+  // Financial states with localStorage persistence
+  const [salary, setSalary] = useState(() => {
+    const saved = localStorage.getItem('budgetProSalary');
+    return saved ? parseFloat(saved) : 0;
+  });
+  
+  const [creditLimit, setCreditLimit] = useState(() => {
+    const saved = localStorage.getItem('budgetProCreditLimit');
+    return saved ? parseFloat(saved) : 0;
+  });
   
   // Dark Mode State
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -195,39 +209,42 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   
-  // New financial control states
-  const [salaryUsed, setSalaryUsed] = useState(0);
-  const [creditUsed, setCreditUsed] = useState(0);
-  const [bankDebt, setBankDebt] = useState(0);
+  // Expenses state - start empty
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    const saved = localStorage.getItem('budgetProExpenses');
+    return saved ? JSON.parse(saved) : [];
+  });
   
-  // Separate expenses for salary and credit card
-  const [expenses, setExpenses] = useState<Expense[]>([
-    { id: '1', category: 'Alimentação', amount: 500, iconType: 'coffee', paymentMethod: 'salary' },
-    { id: '2', category: 'Transporte', amount: 300, iconType: 'car', paymentMethod: 'salary' },
-    { id: '3', category: 'Moradia', amount: 1200, iconType: 'home', paymentMethod: 'salary' },
-  ]);
-  
-  // Credit card bill payment
-  const [creditBillAmount, setCreditBillAmount] = useState(0); // Total amount spent on credit card
+  const [creditBillAmount, setCreditBillAmount] = useState(0);
   const [billPaymentAmount, setBillPaymentAmount] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newAmount, setNewAmount] = useState('');
+  const [newInstallments, setNewInstallments] = useState('');
   const [editingSalary, setEditingSalary] = useState(false);
   const [editingCredit, setEditingCredit] = useState(false);
   const [tempSalary, setTempSalary] = useState(salary.toString());
   const [tempCredit, setTempCredit] = useState(creditLimit.toString());
+  const [selectedMonth, setSelectedMonth] = useState('Dezembro');
 
   // Investment states
   const [investments, setInvestments] = useState<Investment[]>(MOCK_INVESTMENTS);
   const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
   const [investmentAmount, setInvestmentAmount] = useState('');
-  const [purchaseConfirmed, setPurchaseConfirmed] = useState(false);
-  const [showInvestmentResult, setShowInvestmentResult] = useState(false);
 
-  // New state for interactive charts
-  const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null);
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem('budgetProSalary', salary.toString());
+  }, [salary]);
 
-  // Auto-navigate from splash to login after 10 seconds
+  useEffect(() => {
+    localStorage.setItem('budgetProCreditLimit', creditLimit.toString());
+  }, [creditLimit]);
+
+  useEffect(() => {
+    localStorage.setItem('budgetProExpenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  // Auto-navigate from splash to login
   useEffect(() => {
     if (currentScreen === 'splash') {
       const timer = setTimeout(() => {
@@ -237,7 +254,7 @@ export default function App() {
     }
   }, [currentScreen]);
 
-  // Dark Mode Effect - Save to localStorage
+  // Dark Mode Effect
   useEffect(() => {
     localStorage.setItem('budgetProDarkMode', isDarkMode.toString());
   }, [isDarkMode]);
@@ -255,7 +272,7 @@ export default function App() {
     </button>
   );
 
-  // New financial calculations - Separated by payment method
+  // Financial calculations
   const salaryExpenses = React.useMemo(() => 
     expenses.filter(e => e.paymentMethod === 'salary').reduce((sum, expense) => sum + expense.amount, 0), 
     [expenses]
@@ -268,12 +285,11 @@ export default function App() {
   
   const totalExpenses = React.useMemo(() => salaryExpenses + creditExpenses, [salaryExpenses, creditExpenses]);
 
-  // Calculate financial distribution
   const { remainingSalary, availableCredit, totalDebt, creditBill } = React.useMemo(() => {
-    const currentSalaryUsed = salaryExpenses + creditBillAmount; // Salary used includes bill payments
-    const currentCreditBill = creditExpenses; // Bill amount is credit expenses minus payments
-    const currentCreditUsed = currentCreditBill; // Credit used is the bill amount
-    const currentDebt = Math.max(0, currentCreditUsed - creditLimit); // Debt if exceeds credit limit
+    const currentSalaryUsed = salaryExpenses + creditBillAmount;
+    const currentCreditBill = creditExpenses;
+    const currentCreditUsed = currentCreditBill;
+    const currentDebt = Math.max(0, currentCreditUsed - creditLimit);
     
     return {
       remainingSalary: salary - currentSalaryUsed,
@@ -283,50 +299,42 @@ export default function App() {
     };
   }, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
 
-  const isLowMoney = React.useMemo(() => 
-    remainingSalary < salary * 0.2 || (creditBill > creditLimit * 0.8), 
-    [remainingSalary, salary, creditBill, creditLimit]
-  );
-
-  // Chart data calculations with new financial structure
   const expensePercentage = React.useMemo(() => 
-    Math.min(((salaryExpenses / salary) * 100), 100), [salaryExpenses, salary]
+    salary > 0 ? Math.min(((salaryExpenses / salary) * 100), 100) : 0, 
+    [salaryExpenses, salary]
   );
   
   const creditPercentage = React.useMemo(() => 
-    Math.min(((creditExpenses / creditLimit) * 100), 100), [creditExpenses, creditLimit]
+    creditLimit > 0 ? Math.min(((creditExpenses / creditLimit) * 100), 100) : 0, 
+    [creditExpenses, creditLimit]
   );
 
-  // New financial breakdown for charts
-  const financialBreakdown = React.useMemo(() => {
-    const salaryUsedAmount = salaryExpenses + creditBillAmount;
-    const creditUsedAmount = creditExpenses;
-    const debtAmount = Math.max(0, creditExpenses - creditLimit);
+  // Generate monthly data based on current month
+  const monthlyData = React.useMemo(() => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     
-    return {
-      salaryUsed: salaryUsedAmount,
-      creditUsed: creditUsedAmount,
-      debt: debtAmount,
-      total: totalExpenses
-    };
-  }, [salaryExpenses, creditExpenses, creditBillAmount, salary, creditLimit, totalExpenses]);
+    const data = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      // Simulate realistic data
+      const baseSalary = salary / daysInMonth;
+      const baseExpense = salaryExpenses / daysInMonth;
+      const baseInvestment = (salary * 0.1) / daysInMonth;
+      
+      data.push({
+        day: day.toString(),
+        salario: baseSalary * day,
+        gastos: baseExpense * day * (0.8 + Math.random() * 0.4),
+        investimentos: baseInvestment * day * (0.5 + Math.random() * 1.5)
+      });
+    }
+    
+    return data;
+  }, [salary, salaryExpenses]);
 
-  // Financial notification effects
-  useEffect(() => {
-    if (remainingSalary <= 0) {
-      // Notification removed - user controls payment method manually now
-    }
-    
-    if (financialBreakdown.debt > 0) {
-      alert(`🚨 Você ultrapassou o limite do cartão. Agora está devendo ao banco R$ ${financialBreakdown.debt.toFixed(2)}!`);
-    }
-    
-    if (creditBill > creditLimit * 0.9) {
-      // High credit usage warning
-    }
-  }, [financialBreakdown, salary, remainingSalary, creditBill, creditLimit]);
-
-  // Progress ring component mobile-first
+  // Progress ring component
   const ProgressRing = ({ 
     percentage, 
     size = 100, 
@@ -376,7 +384,7 @@ export default function App() {
     );
   };
 
-  // Simple "server" simulation using localStorage
+  // Authentication handlers
   const handleLogin = React.useCallback(() => {
     if (!email || !password) {
       alert('Por favor, preencha todos os campos.');
@@ -412,27 +420,23 @@ export default function App() {
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
     
-    // Check if email already exists
     if (users.some((u: any) => u.email === email)) {
       alert('Este email já está cadastrado. Tente fazer login.');
       return;
     }
 
-    // Save new user
-    const newUser = { id: Date.now(), name, email, password, cpf };
+    const newUser = { id: Date.now(), name, email, password };
     users.push(newUser);
     localStorage.setItem('budgetProUsers', JSON.stringify(users));
     
-    // Clear form and go back to login
     setName('');
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setCpf('');
     
     alert('Conta criada com sucesso! Faça login para continuar.');
     setCurrentScreen('login');
-  }, [name, email, password, confirmPassword, cpf]);
+  }, [name, email, password, confirmPassword]);
 
   const handleForgotPassword = React.useCallback(() => {
     if (!resetEmail) {
@@ -444,7 +448,6 @@ export default function App() {
     const user = users.find((u: any) => u.email === resetEmail);
     
     if (user) {
-      // Store email for password reset
       localStorage.setItem('resetEmail', resetEmail);
       alert('Link de redefinição enviado para seu email! (Simulação)');
       setCurrentScreen('reset-password');
@@ -501,22 +504,28 @@ export default function App() {
       const iconTypes: IconType[] = ['shopping', 'smartphone', 'coffee'];
       const randomIconType = iconTypes[Math.floor(Math.random() * iconTypes.length)];
       
+      const amount = parseFloat(newAmount);
+      const installments = newInstallments ? parseInt(newInstallments) : undefined;
+      
       setExpenses(prev => [
         ...prev,
         {
           id: Date.now().toString(),
           category: newCategory,
-          amount: parseFloat(newAmount),
+          amount: installments ? amount / installments : amount,
           iconType: randomIconType,
-          paymentMethod: paymentMethod
+          paymentMethod: paymentMethod,
+          installments: installments ? 1 : undefined,
+          totalInstallments: installments,
+          dueDate: installments ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR') : undefined
         }
       ]);
       setNewCategory('');
       setNewAmount('');
+      setNewInstallments('');
     }
-  }, [newCategory, newAmount]);
+  }, [newCategory, newAmount, newInstallments]);
   
-  // Function to pay credit card bill
   const payCreditBill = React.useCallback(() => {
     const paymentAmount = parseFloat(billPaymentAmount);
     
@@ -535,12 +544,26 @@ export default function App() {
       return;
     }
     
-    // Update credit bill amount paid
     setCreditBillAmount(prev => prev + paymentAmount);
     setBillPaymentAmount('');
     
     alert(`✅ Pagamento de R$ ${paymentAmount.toFixed(2)} realizado com sucesso!`);
   }, [billPaymentAmount, creditBill, remainingSalary]);
+
+  const payInstallment = React.useCallback((expenseId: string) => {
+    setExpenses(prev => prev.map(expense => {
+      if (expense.id === expenseId && expense.installments && expense.totalInstallments) {
+        if (expense.installments < expense.totalInstallments) {
+          return {
+            ...expense,
+            installments: expense.installments + 1
+          };
+        }
+      }
+      return expense;
+    }));
+    alert('Parcela paga com sucesso!');
+  }, []);
 
   const removeExpense = React.useCallback((id: string) => {
     setExpenses(prev => prev.filter(expense => expense.id !== id));
@@ -556,177 +579,7 @@ export default function App() {
     setEditingCredit(false);
   }, [tempCredit]);
 
-  // Investment functions
-  const selectInvestment = React.useCallback((investment: Investment) => {
-    setSelectedInvestment(investment);
-    setCurrentScreen('investment-details');
-  }, []);
-
-  const confirmInvestmentPurchase = React.useCallback(() => {
-    if (!selectedInvestment || !investmentAmount) {
-      alert('Dados incompletos para o investimento.');
-      return;
-    }
-
-    const amount = parseFloat(investmentAmount);
-    if (amount < selectedInvestment.minInvestment || amount > selectedInvestment.maxInvestment) {
-      alert(`Valor deve estar entre R$ ${selectedInvestment.minInvestment} e R$ ${selectedInvestment.maxInvestment}.`);
-      return;
-    }
-
-    if (amount > remainingSalary + availableCredit) {
-      alert('Saldo insuficiente para este investimento.');
-      return;
-    }
-
-    // Simulate investment result (random gain/loss within expected range)
-    const variationFactor = (Math.random() * 2 - 1); // -1 to 1
-    const returnPercentage = (selectedInvestment.expectedReturn / 100) * variationFactor * 0.5; // Half the expected range for realism
-    const finalValue = amount * (1 + returnPercentage);
-    const profitLoss = finalValue - amount;
-
-    // Add investment as expense
-    const investmentExpense: Expense = {
-      id: Date.now().toString(),
-      category: `Investimento: ${selectedInvestment.name}`,
-      amount: amount,
-      iconType: 'shopping'
-    };
-
-    setExpenses(prev => [...prev, investmentExpense]);
-
-    // Update investment status
-    setInvestments(prev => prev.map(inv => 
-      inv.id === selectedInvestment.id 
-        ? {
-            ...inv,
-            status: 'purchased' as InvestmentStatus,
-            purchaseAmount: amount,
-            purchaseDate: new Date(),
-            currentValue: finalValue,
-            profitLoss: profitLoss
-          }
-        : inv
-    ));
-
-    setInvestmentAmount('');
-    setPurchaseConfirmed(false);
-    setCurrentScreen('investment-result');
-    
-    // Show result after brief delay
-    setTimeout(() => setShowInvestmentResult(true), 1000);
-  }, [selectedInvestment, investmentAmount, remainingSalary, availableCredit]);
-
-  const getRiskColor = (risk: RiskLevel) => {
-    switch (risk) {
-      case 'low': return '#10B981';
-      case 'medium': return '#F59E0B';
-      case 'high': return '#EF4444';
-      default: return '#6B7280';
-    }
-  };
-
-  const getRiskLabel = (risk: RiskLevel) => {
-    switch (risk) {
-      case 'low': return 'Baixo';
-      case 'medium': return 'Médio';
-      case 'high': return 'Alto';
-      default: return 'Indefinido';
-    }
-  };
-
-  // Pie chart data with colors - SALARY expenses
-  const salaryPieChartData = React.useMemo(() => {
-    const colors = ['#046BF4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4'];
-    const salaryExpensesList = expenses.filter(e => e.paymentMethod === 'salary');
-    return salaryExpensesList.map((expense, index) => ({
-      name: expense.category,
-      value: expense.amount,
-      color: colors[index % colors.length]
-    }));
-  }, [expenses]);
-  
-  // Pie chart data with colors - CREDIT expenses
-  const creditPieChartData = React.useMemo(() => {
-    const colors = ['#8B5CF6', '#EC4899', '#F59E0B', '#EF4444', '#06B6D4', '#10B981'];
-    const creditExpensesList = expenses.filter(e => e.paymentMethod === 'credit');
-    return creditExpensesList.map((expense, index) => ({
-      name: expense.category,
-      value: expense.amount,
-      color: colors[index % colors.length]
-    }));
-  }, [expenses]);
-
-  // Enhanced monthly data with financial breakdown
-  const monthlyData = React.useMemo(() => [
-    { month: 'Jan', receitas: 3000, gastos: 2200, investimentos: 300 },
-    { month: 'Fev', receitas: 3000, gastos: 2500, investimentos: 200 },
-    { month: 'Mar', receitas: salary, gastos: totalExpenses, investimentos: 150 },
-  ], [salary, totalExpenses]);
-
-  // 🔵 1. Gráfico de Pizza (Distribuição de Recursos) - DATA
-  const financialDistributionPieData = React.useMemo(() => {
-    const data = [];
-    
-    // Salário disponível (azul)
-    if (remainingSalary > 0) {
-      data.push({
-        name: 'Salário Disponível',
-        value: remainingSalary,
-        color: '#046BF4', // Azul
-        percentage: ((remainingSalary / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
-    
-    // Dívida bancária (vermelho)
-    if (totalDebt > 0) {
-      data.push({
-        name: 'Dívida Bancária',
-        value: totalDebt,
-        color: '#EF4444', // Vermelho
-        percentage: ((totalDebt / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
-    
-    // Cartão usado (roxo)
-    if (financialBreakdown.creditUsed > 0) {
-      data.push({
-        name: 'Cartão Usado',
-        value: financialBreakdown.creditUsed,
-        color: '#8B5CF6', // Roxo
-        percentage: ((financialBreakdown.creditUsed / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
-    
-    // Salário usado (verde)
-    if (financialBreakdown.salaryUsed > 0) {
-      data.push({
-        name: 'Salário Usado',
-        value: financialBreakdown.salaryUsed,
-        color: '#10B981', // Verde
-        percentage: ((financialBreakdown.salaryUsed / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
-    
-    // Cartão disponível (azul claro)
-    if (availableCredit > 0) {
-      data.push({
-        name: 'Cartão Disponível',
-        value: availableCredit,
-        color: '#06B6D4', // Azul claro
-        percentage: ((availableCredit / (salary + creditLimit)) * 100).toFixed(1)
-      });
-    }
-    
-    return data;
-  }, [remainingSalary, totalDebt, financialBreakdown, availableCredit, salary, creditLimit]);
-
-  // Função para lidar com clique no gráfico de pizza
-  const handlePieSliceClick = React.useCallback((data: any, index: number) => {
-    setSelectedPieSlice(selectedPieSlice === data.name ? null : data.name);
-  }, [selectedPieSlice]);
-
-  // 🟦 SPLASH SCREEN - Mobile First
+  // 🟦 SPLASH SCREEN
   if (currentScreen === 'splash') {
     return (
       <motion.div 
@@ -736,7 +589,6 @@ export default function App() {
         transition={{ duration: 0.6 }}
       >
         <DarkModeToggle />
-        {/* Logo - Mobile First */}
         <div className="mb-8">
           <img 
             src={logoDefinitiva} 
@@ -745,12 +597,11 @@ export default function App() {
           />
         </div>
 
-        {/* Loading animation - Mobile First */}
         <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center">
           {Array.from({ length: 12 }).map((_, index) => {
             const angle = (index * 360) / 12;
             const radian = (angle * Math.PI) / 180;
-            const radius = 28; // Fixed radius for consistency
+            const radius = 28;
             const x = Math.cos(radian) * radius;
             const y = Math.sin(radian) * radius;
             
@@ -777,7 +628,6 @@ export default function App() {
           })}
         </div>
 
-        {/* Texto de carregamento - Desktop only */}
         <motion.div 
           className="mt-8 text-center hidden md:block"
           initial={{ opacity: 0 }}
@@ -790,7 +640,7 @@ export default function App() {
     );
   }
 
-  // 🟦 LOGIN SCREEN - Mobile First
+  // 🟦 LOGIN SCREEN
   if (currentScreen === 'login') {
     return (
       <motion.div 
@@ -808,7 +658,6 @@ export default function App() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="px-4 py-8 pt-20"
         >
-          {/* Container - Mobile First (375px optimized) */}
           <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
             <div className="text-center mb-6">
               <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white'}`}>
@@ -880,7 +729,7 @@ export default function App() {
     );
   }
 
-  // 🟦 SIGNUP SCREEN - Mobile First
+  // 🟦 SIGNUP SCREEN
   if (currentScreen === 'signup') {
     return (
       <motion.div 
@@ -898,15 +747,11 @@ export default function App() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="px-4 py-8 pt-20"
         >
-          {/* Container - Mobile First (375px optimized) */}
           <div className="max-w-sm mx-auto md:max-w-md lg:max-w-lg">
             <div className="text-center mb-6">
-              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold ${isDarkMode ? 'text-white' : 'text-white md:text-[#046BF4]'}`}>
+              <h2 className={`text-2xl md:text-3xl lg:text-4xl mb-2 font-bold text-white`}>
                 Criar Nova Conta
               </h2>
-              <p className={`text-sm md:text-base px-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-200'}`}>
-                Transforme sua relação com o dinheiro
-              </p>
             </div>
             <Card className={`shadow-xl border-0 rounded-2xl ${isDarkMode ? 'bg-gray-800' : 'bg-white/95 backdrop-blur-sm'}`}>
               <CardContent className="p-5 md:p-6 space-y-4">
@@ -982,7 +827,7 @@ export default function App() {
     );
   }
 
-  // 🟦 FORGOT PASSWORD SCREEN - Mobile First
+  // 🟦 FORGOT PASSWORD SCREEN
   if (currentScreen === 'forgot-password') {
     return (
       <motion.div 
@@ -1048,7 +893,7 @@ export default function App() {
     );
   }
 
-  // 🟦 RESET PASSWORD SCREEN - Mobile First
+  // 🟦 RESET PASSWORD SCREEN
   if (currentScreen === 'reset-password') {
     return (
       <motion.div 
@@ -1126,12 +971,15 @@ export default function App() {
     );
   }
 
-  // 🟦 DASHBOARD SCREEN - Mobile First (375px optimized)
+  // 🟦 DASHBOARD SCREEN
   if (currentScreen === 'dashboard') {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const userName = currentUser.name || 'Usuário';
+    
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <DarkModeToggle />
-        {/* Header - Mobile First */}
+        {/* Header - Simplified */}
         <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -1141,138 +989,193 @@ export default function App() {
                 className="w-12 h-12 md:w-16 md:h-16 object-contain"
               />
               <div className="ml-3 md:ml-4">
-                <h1 className="text-white text-lg md:text-xl font-semibold">BudgetPro</h1>
-                <p className="text-white/80 text-xs md:text-sm hidden sm:block">Suas finanças</p>
+                <h1 className="text-white text-lg md:text-xl font-semibold">Olá, {userName}</h1>
               </div>
-            </div>
-            
-            {/* Quick info - Mobile */}
-            <div className="text-right text-white">
-              <p className="text-xs text-white/80">Disponível</p>
-              <p className="text-sm font-semibold">R$ {(remainingSalary + availableCredit).toFixed(2)}</p>
             </div>
           </div>
         </div>
 
         <div className="px-4 py-4">
-          {/* Low Money Alert - Mobile First */}
-          {isLowMoney && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4"
-            >
-              <Alert className="border-red-200 bg-red-50 rounded-xl shadow-sm">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-700 text-sm">
-                  ⚠️ Saldo baixo! Restam R$ {remainingSalary.toFixed(2)}
-                </AlertDescription>
-              </Alert>
-            </motion.div>
-          )}
-
           <Tabs defaultValue="overview" className="space-y-4">
-            {/* Tabs - Mobile Optimized (4 tabs now) */}
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 rounded-xl p-1 h-auto md:h-11" style={{ backgroundColor: '#f8fafc' }}>
+            {/* Tabs Navigation */}
+            <TabsList className={`grid w-full grid-cols-2 md:grid-cols-4 rounded-xl p-1 h-auto md:h-11 ${isDarkMode ? 'bg-[#1e293b]' : 'bg-[#f8fafc]'}`}>
               <TabsTrigger 
                 value="overview" 
-                className="rounded-lg data-[state=active]:bg-[#046BF4] data-[state=active]:shadow-sm data-[state=active]:text-white hover:bg-sky-100 transition-all text-xs font-medium py-2"
+                className={`rounded-lg transition-all text-xs font-medium py-2 ${
+                  isDarkMode 
+                    ? 'data-[state=active]:bg-[#60a5fa] data-[state=active]:text-white data-[state=inactive]:bg-[#172554] data-[state=inactive]:text-[#94a3b8]' 
+                    : 'data-[state=active]:bg-[#046BF4] data-[state=active]:text-white data-[state=inactive]:text-[#64748b] hover:bg-sky-100'
+                }`}
               >
                 📊 Visão Geral
               </TabsTrigger>
               <TabsTrigger 
                 value="boards"
-                className="rounded-lg data-[state=active]:bg-[#046BF4] data-[state=active]:shadow-sm data-[state=active]:text-white hover:bg-sky-100 transition-all text-xs font-medium py-2"
+                className={`rounded-lg transition-all text-xs font-medium py-2 ${
+                  isDarkMode 
+                    ? 'data-[state=active]:bg-[#60a5fa] data-[state=active]:text-white data-[state=inactive]:bg-[#172554] data-[state=inactive]:text-[#94a3b8]' 
+                    : 'data-[state=active]:bg-[#046BF4] data-[state=active]:text-white data-[state=inactive]:text-[#64748b] hover:bg-sky-100'
+                }`}
               >
-                📋 Prancheta
+                📋 Gastos
               </TabsTrigger>
               <TabsTrigger 
                 value="payment"
-                className="rounded-lg data-[state=active]:bg-[#046BF4] data-[state=active]:shadow-sm data-[state=active]:text-white hover:bg-sky-100 transition-all text-xs font-medium py-2"
+                className={`rounded-lg transition-all text-xs font-medium py-2 ${
+                  isDarkMode 
+                    ? 'data-[state=active]:bg-[#60a5fa] data-[state=active]:text-white data-[state=inactive]:bg-[#172554] data-[state=inactive]:text-[#94a3b8]' 
+                    : 'data-[state=active]:bg-[#046BF4] data-[state=active]:text-white data-[state=inactive]:text-[#64748b] hover:bg-sky-100'
+                }`}
               >
                 🧾 Pagar Fatura
               </TabsTrigger>
               <TabsTrigger 
                 value="ai"
-                className="rounded-lg data-[state=active]:bg-[#046BF4] data-[state=active]:shadow-sm data-[state=active]:text-white hover:bg-sky-100 transition-all text-xs font-medium py-2"
+                className={`rounded-lg transition-all text-xs font-medium py-2 ${
+                  isDarkMode 
+                    ? 'data-[state=active]:bg-[#60a5fa] data-[state=active]:text-white data-[state=inactive]:bg-[#172554] data-[state=inactive]:text-[#94a3b8]' 
+                    : 'data-[state=active]:bg-[#046BF4] data-[state=active]:text-white data-[state=inactive]:text-[#64748b] hover:bg-sky-100'
+                }`}
               >
                 🤖 IA
               </TabsTrigger>
             </TabsList>
 
-            {/* 🔵 OVERVIEW TAB - Mobile First */}
+            {/* 🔵 OVERVIEW TAB - NEW STRUCTURE */}
             <TabsContent value="overview" className="space-y-4">
-              {/* Financial Cards - Mobile Grid */}
+              {/* Grid 2x2 - Financial Overview */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                {/* Income Card - Mobile */}
-                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2 rounded-lg bg-green-100">
-                        <ArrowUpRight className="w-4 h-4 text-green-600" />
-                      </div>
-                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Receitas</span>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-green-600">R$ {salary.toFixed(2)}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Salário mensal</p>
+                {/* Salário Mensal */}
+                <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>SALÁRIO MENSAL</p>
+                      <p className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        R$ {salary.toFixed(2)}
+                      </p>
+                      {editingSalary ? (
+                        <div className="space-y-2">
+                          <Input
+                            type="number"
+                            value={tempSalary}
+                            onChange={(e) => setTempSalary(e.target.value)}
+                            className={`h-9 text-sm ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
+                          />
+                          <div className="flex gap-1">
+                            <Button 
+                              onClick={updateSalary} 
+                              size="sm" 
+                              className="flex-1 h-8 text-xs"
+                              style={{ backgroundColor: '#046BF4' }}
+                            >
+                              Salvar
+                            </Button>
+                            <Button 
+                              onClick={() => setEditingSalary(false)} 
+                              variant="outline"
+                              size="sm" 
+                              className="flex-1 h-8 text-xs"
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setEditingSalary(true);
+                            setTempSalary(salary.toString());
+                          }}
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          style={{ backgroundColor: '#046BF4' }}
+                        >
+                          Modificar
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Expenses Card - Mobile */}
-                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2 rounded-lg bg-red-100">
-                        <ArrowDownRight className="w-4 h-4 text-red-600" />
-                      </div>
-                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Gastos Salário</span>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-red-600">R$ {salaryExpenses.toFixed(2)}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Pagos com salário</p>
+                {/* Limite do Cartão */}
+                <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>LIMITE DO CARTÃO</p>
+                      <p className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        R$ {creditLimit.toFixed(2)}
+                      </p>
+                      {editingCredit ? (
+                        <div className="space-y-2">
+                          <Input
+                            type="number"
+                            value={tempCredit}
+                            onChange={(e) => setTempCredit(e.target.value)}
+                            className={`h-9 text-sm ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : ''}`}
+                          />
+                          <div className="flex gap-1">
+                            <Button 
+                              onClick={updateCredit} 
+                              size="sm" 
+                              className="flex-1 h-8 text-xs"
+                              style={{ backgroundColor: '#046BF4' }}
+                            >
+                              Salvar
+                            </Button>
+                            <Button 
+                              onClick={() => setEditingCredit(false)} 
+                              variant="outline"
+                              size="sm" 
+                              className="flex-1 h-8 text-xs"
+                            >
+                              ✕
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            setEditingCredit(true);
+                            setTempCredit(creditLimit.toString());
+                          }}
+                          size="sm"
+                          className="w-full h-8 text-xs"
+                          style={{ backgroundColor: '#046BF4' }}
+                        >
+                          Modificar
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Available Card - Mobile */}
-                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#e0f2fe' }}>
-                        <DollarSign className="w-4 h-4" style={{ color: '#046BF4' }} />
-                      </div>
-                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Disponível</span>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold" style={{ color: '#046BF4' }}>
+                {/* Disponível */}
+                <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>DISPONÍVEL</p>
+                      <p className="text-xl font-semibold text-green-600">
                         R$ {remainingSalary.toFixed(2)}
                       </p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Salário restante</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Credit Card - Mobile */}
-                <Card className={`shadow-md border-0 rounded-xl hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="p-2 rounded-lg bg-purple-100">
-                        <CreditCard className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <span className={`text-xs uppercase ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>Cartão</span>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-purple-600">R$ {availableCredit.toFixed(2)}</p>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Limite livre</p>
+                {/* Cartão */}
+                <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>CARTÃO</p>
+                      <p className="text-xl font-semibold text-purple-600">
+                        R$ {creditBill.toFixed(2)}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Progress Summary - Mobile */}
-              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
+              {/* Resumo do Mês */}
+              <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
                     <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
@@ -1284,16 +1187,22 @@ export default function App() {
                 <CardContent>
                   <div className="mb-3">
                     <div className="flex justify-between items-center mb-2">
-                      <span className={`text-sm ${isDarkMode ? 'text-white' : ''}`}>Você gastou {Math.round(expensePercentage)}% da sua renda</span>
-                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : ''}`}>{Math.round(expensePercentage)}%</span>
+                      <span className={`text-sm ${isDarkMode ? 'text-white' : ''}`}>
+                        Você gastou {Math.round(expensePercentage)}% da sua renda
+                      </span>
+                      <span className={`text-sm font-semibold ${isDarkMode ? 'text-white' : ''}`}>
+                        {Math.round(expensePercentage)}%
+                      </span>
                     </div>
-                    <Progress 
-                      value={expensePercentage} 
-                      className="h-3 rounded-full"
-                      style={{
-                        '--progress-background': expensePercentage > 80 ? '#EF4444' : expensePercentage > 60 ? '#F59E0B' : '#046BF4'
-                      } as React.CSSProperties}
-                    />
+                    <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: isDarkMode ? '#3b82f6' : '#e5e7eb' }}>
+                      <div 
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ 
+                          width: `${expensePercentage}%`,
+                          backgroundColor: expensePercentage > 80 ? '#EF4444' : expensePercentage > 60 ? '#F59E0B' : '#046BF4'
+                        }}
+                      />
+                    </div>
                     <p className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       {expensePercentage > 90 ? '🚨 Gastos muito altos!' :
                        expensePercentage > 70 ? '⚠️ Cuidado com os gastos' :
@@ -1301,7 +1210,6 @@ export default function App() {
                     </p>
                   </div>
                   
-                  {/* Progress Ring - Mobile Center */}
                   <div className="flex justify-center mt-4">
                     <ProgressRing 
                       percentage={expensePercentage} 
@@ -1312,15 +1220,27 @@ export default function App() {
                 </CardContent>
               </Card>
 
-              {/* Line Chart - Mobile */}
-              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
+              {/* Gráfico de Evolução - FUNCIONAL */}
+              <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader className="pb-3">
-                  <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                      <TrendingUp className="w-4 h-4 text-white" />
-                    </div>
-                    Evolução dos Últimos Meses
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
+                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
+                        <TrendingUp className="w-4 h-4 text-white" />
+                      </div>
+                      Evolução dos Últimos Meses
+                    </CardTitle>
+                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                      <SelectTrigger className={`w-32 h-8 text-xs ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'].map(month => (
+                          <SelectItem key={month} value={month}>{month}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-48">
@@ -1328,48 +1248,49 @@ export default function App() {
                       <LineChart data={monthlyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
-                          dataKey="month" 
+                          dataKey="day" 
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 10, fill: '#666' }}
+                          tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#666' }}
                         />
                         <YAxis 
                           axisLine={false}
                           tickLine={false}
-                          tick={{ fontSize: 10, fill: '#666' }}
+                          tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#666' }}
                           tickFormatter={(value) => `R$ ${value}`}
                         />
                         <Tooltip 
                           formatter={(value: any, name: string) => [
-                            `R$ ${value.toFixed(2)}`,
-                            name === 'receitas' ? 'Receitas' :
+                            `R$ ${Number(value).toFixed(2)}`,
+                            name === 'salario' ? 'Salário' :
                             name === 'gastos' ? 'Gastos' : 'Investimentos'
                           ]}
-                          labelFormatter={(label) => `Mês: ${label}`}
+                          labelFormatter={(label) => `Dia: ${label}`}
                           contentStyle={{ 
-                            backgroundColor: 'white', 
+                            backgroundColor: isDarkMode ? '#1e293b' : 'white', 
                             border: '1px solid #e0e0e0',
                             borderRadius: '8px',
                             boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                            fontSize: '12px'
+                            fontSize: '12px',
+                            color: isDarkMode ? 'white' : 'black'
                           }}
                         />
                         <Line 
                           type="monotone" 
-                          dataKey="receitas" 
+                          dataKey="salario" 
                           stroke="#10B981" 
                           strokeWidth={2}
-                          dot={{ fill: '#10B981', strokeWidth: 2, r: 3 }}
-                          activeDot={{ r: 5, fill: '#10B981' }}
-                          name="Receitas"
+                          dot={{ fill: '#10B981', strokeWidth: 2, r: 2 }}
+                          activeDot={{ r: 4, fill: '#10B981' }}
+                          name="Salário"
                         />
                         <Line 
                           type="monotone" 
                           dataKey="gastos" 
                           stroke="#EF4444" 
                           strokeWidth={2}
-                          dot={{ fill: '#EF4444', strokeWidth: 2, r: 3 }}
-                          activeDot={{ r: 5, fill: '#EF4444' }}
+                          dot={{ fill: '#EF4444', strokeWidth: 2, r: 2 }}
+                          activeDot={{ r: 4, fill: '#EF4444' }}
                           name="Gastos"
                         />
                         <Line 
@@ -1377,8 +1298,8 @@ export default function App() {
                           dataKey="investimentos" 
                           stroke="#046BF4" 
                           strokeWidth={2}
-                          dot={{ fill: '#046BF4', strokeWidth: 2, r: 3 }}
-                          activeDot={{ r: 5, fill: '#046BF4' }}
+                          dot={{ fill: '#046BF4', strokeWidth: 2, r: 2 }}
+                          activeDot={{ r: 4, fill: '#046BF4' }}
                           name="Investimentos"
                         />
                       </LineChart>
@@ -1386,414 +1307,96 @@ export default function App() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Pie Chart - Mobile */}
-              <Card className={`shadow-md border-0 rounded-xl mb-4 ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                      <PieChart className="w-4 h-4 text-white" />
-                    </div>
-                    Distribuição de Recursos
-                  </CardTitle>
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Toque nas fatias para detalhes
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  {financialDistributionPieData.length > 0 ? (
-                    <div className="space-y-4">
-                      {/* Gráfico de Pizza - Mobile */}
-                      <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RechartsPieChart>
-                            <Pie
-                              data={financialDistributionPieData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={25}
-                              outerRadius={60}
-                              paddingAngle={2}
-                              dataKey="value"
-                              onClick={handlePieSliceClick}
-                            >
-                              {financialDistributionPieData.map((entry, index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={entry.color} 
-                                  stroke={selectedPieSlice === entry.name ? '#000' : 'none'}
-                                  strokeWidth={selectedPieSlice === entry.name ? 2 : 0}
-                                  style={{ cursor: 'pointer' }}
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              formatter={(value: any, name: string) => [
-                                `R$ ${value.toFixed(2)}`,
-                                name
-                              ]}
-                              contentStyle={{ 
-                                backgroundColor: 'white', 
-                                border: '1px solid #e0e0e0',
-                                borderRadius: '8px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                                fontSize: '12px'
-                              }}
-                            />
-                          </RechartsPieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      
-                      {/* Legend Mobile */}
-                      <div className="space-y-2">
-                        {financialDistributionPieData.map((item, index) => (
-                          <motion.div 
-                            key={item.name} 
-                            className={`p-3 rounded-lg border transition-all cursor-pointer ${
-                              selectedPieSlice === item.name 
-                                ? 'border-gray-400 bg-gray-50' 
-                                : 'border-transparent bg-gray-100'
-                            }`}
-                            onClick={() => handlePieSliceClick(item, index)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-4 h-4 rounded-full flex-shrink-0" 
-                                style={{ backgroundColor: item.color }}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{item.name}</p>
-                                <p className="text-xs text-gray-600">{item.percentage}% do total</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-sm" style={{ color: item.color }}>
-                                  R$ {item.value.toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="h-40 flex items-center justify-center text-gray-500">
-                      <div className="text-center">
-                        <PieChart className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Sem dados</p>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Edit Cards - Mobile */}
-              <div className="space-y-4">
-                {/* Salary Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                        <DollarSign className="w-4 h-4 text-white" />
-                      </div>
-                      Salário Mensal
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {editingSalary ? (
-                      <div className="space-y-3">
-                        <Input
-                          type="number"
-                          value={tempSalary}
-                          onChange={(e) => setTempSalary(e.target.value)}
-                          className="h-10 rounded-lg"
-                          placeholder="Digite o novo salário"
-                        />
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={updateSalary} 
-                            size="sm" 
-                            className="flex-1 rounded-lg hover:brightness-110 transition-all"
-                            style={{ backgroundColor: '#046BF4' }}
-                          >
-                            Salvar
-                          </Button>
-                          <Button 
-                            onClick={() => setEditingSalary(false)} 
-                            variant="outline"
-                            size="sm" 
-                            className="flex-1 rounded-lg"
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="mb-3">
-                          <p className="text-xl font-semibold text-green-600">R$ {salary.toFixed(2)}</p>
-                          <p className="text-sm text-gray-500">Valor atual</p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            setEditingSalary(true);
-                            setTempSalary(salary.toString());
-                          }}
-                          variant="outline"
-                          className="w-full rounded-lg border-2 hover:bg-sky-50 transition-all text-sm"
-                          style={{ borderColor: '#046BF4', color: '#046BF4' }}
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Modificar Salário
-                        </Button>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Credit Card - Mobile */}
-                <Card className="shadow-md border-0 rounded-xl">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                        <CreditCard className="w-4 h-4 text-white" />
-                      </div>
-                      Limite do Cartão
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {editingCredit ? (
-                      <div className="space-y-3">
-                        <Input
-                          type="number"
-                          value={tempCredit}
-                          onChange={(e) => setTempCredit(e.target.value)}
-                          className="h-10 rounded-lg"
-                          placeholder="Digite o novo limite"
-                        />
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={updateCredit} 
-                            size="sm" 
-                            className="flex-1 rounded-lg hover:brightness-110 transition-all"
-                            style={{ backgroundColor: '#046BF4' }}
-                          >
-                            Salvar
-                          </Button>
-                          <Button 
-                            onClick={() => setEditingCredit(false)} 
-                            variant="outline"
-                            size="sm" 
-                            className="flex-1 rounded-lg"
-                          >
-                            Cancelar
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="mb-3">
-                          <p className="text-xl font-semibold text-purple-600">R$ {creditLimit.toFixed(2)}</p>
-                          <p className="text-sm text-gray-500">Limite atual</p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            setEditingCredit(true);
-                            setTempCredit(creditLimit.toString());
-                          }}
-                          variant="outline"
-                          className="w-full rounded-lg border-2 hover:bg-sky-50 transition-all text-sm"
-                          style={{ borderColor: '#046BF4', color: '#046BF4' }}
-                        >
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          Modificar Limite
-                        </Button>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
 
-            {/* 🔵 BOARDS TAB - Pranchetas lado a lado */}
+            {/* 🔵 GASTOS TAB - Two Boards Side by Side */}
             <TabsContent value="boards" className="space-y-4">
-              {/* Header - Desktop e Mobile */}
               <div className="mb-4">
-                <h2 className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>📋 Pranchetas de Gastos</h2>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Gerencie seus gastos de salário e cartão de crédito</p>
+                <h2 className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  📋 Pranchetas de Gastos
+                </h2>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Gerencie seus gastos de salário e cartão de crédito
+                </p>
               </div>
 
-              {/* Side by Side Boards - Responsive */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
                 {/* LEFT BOARD: SALARY EXPENSES */}
                 <div className="space-y-4">
-                  {/* Summary Card - Salary */}
-                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : 'bg-gradient-to-br from-green-50 to-blue-50'}`}>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💰 Salário Total</span>
-                          <span className="font-semibold text-green-600">R$ {salary.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💸 Total Gasto</span>
-                          <span className="font-semibold text-red-600">R$ {salaryExpenses.toFixed(2)}</span>
-                        </div>
-                        <div className={`h-px my-2 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>✅ Saldo Restante</span>
-                          <span className="font-bold text-lg" style={{ color: '#046BF4' }}>R$ {remainingSalary.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Progress and Charts - Salary */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Uso do Orçamento</CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex flex-col items-center py-2">
-                        <ProgressRing 
-                          percentage={expensePercentage} 
-                          size={80}
-                          color={expensePercentage > 80 ? '#EF4444' : expensePercentage > 60 ? '#F59E0B' : '#046BF4'}
-                        />
-                        <p className={`text-xs mt-2 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {expensePercentage > 80 ? 'Apertado!' : 
-                           expensePercentage > 60 ? 'Atenção' : 'Controlado'}
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Por Categoria</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        {salaryPieChartData.length > 0 ? (
-                          <div className="h-24">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={salaryPieChartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={15}
-                                  outerRadius={35}
-                                  paddingAngle={2}
-                                  dataKey="value"
-                                >
-                                  {salaryPieChartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any) => [`R$ ${value.toFixed(2)}`, 'Valor']}
-                                />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <div className="h-24 flex items-center justify-center text-gray-400 text-xs">
-                            Sem dados
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Expense Management - Salary */}
-                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                     <CardHeader>
                       <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
-                        <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                          <ShoppingCart className="w-4 h-4 text-white" />
-                        </div>
-                        💵 Prancheta de Gastos do Salário
+                        💵 Gastos do Salário
                       </CardTitle>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Gastos pagos com dinheiro do salário
-                      </div>
                     </CardHeader>
-                    <CardContent>
-                      {/* Add new expense - Salary */}
-                      <div className="space-y-3 mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                        <p className="text-xs text-gray-700 font-medium">Adicionar novo gasto</p>
+                    <CardContent className="space-y-3">
+                      {/* Add expense form */}
+                      <div className="space-y-2">
                         <Input
-                          placeholder="Nome da categoria"
+                          placeholder="Nome do gasto"
                           value={newCategory}
                           onChange={(e) => setNewCategory(e.target.value)}
-                          className="h-10 rounded-lg bg-white"
+                          className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Valor (R$)"
-                            type="number"
-                            value={newAmount}
-                            onChange={(e) => setNewAmount(e.target.value)}
-                            className="flex-1 h-10 rounded-lg bg-white"
-                          />
-                          <Button 
-                            onClick={() => addExpense('salary')} 
-                            className="rounded-lg px-4 h-10 hover:brightness-110 transition-all"
-                            style={{ backgroundColor: '#046BF4' }}
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Input
+                          type="number"
+                          placeholder="Valor"
+                          value={newAmount}
+                          onChange={(e) => setNewAmount(e.target.value)}
+                          className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                        />
+                        <Button
+                          onClick={() => addExpense('salary')}
+                          className="w-full h-10"
+                          style={{ backgroundColor: '#046BF4' }}
+                        >
+                          <PlusCircle className="w-4 h-4 mr-2" />
+                          Adicionar Gasto
+                        </Button>
                       </div>
 
-                      {/* Expenses list - Salary */}
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {expenses.filter(e => e.paymentMethod === 'salary').map((expense) => {
-                          const IconComponent = iconMap[expense.iconType];
-                          return (
-                            <motion.div
-                              key={expense.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center justify-between p-3 rounded-lg border bg-white shadow-sm"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg" style={{ backgroundColor: '#f1f5f9' }}>
-                                  <IconComponent className="w-4 h-4" style={{ color: '#046BF4' }} />
-                                </div>
-                                <div>
-                                  <span className="font-medium text-sm">{expense.category}</span>
-                                  <p className="text-xs text-gray-500">
-                                    {salaryExpenses > 0 ? ((expense.amount / salaryExpenses) * 100).toFixed(1) : '0'}% dos gastos
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="text-right">
-                                  <span className="font-semibold text-sm">R$ {expense.amount.toFixed(2)}</span>
+                      {/* Expense list */}
+                      <div className="space-y-2">
+                        {expenses.filter(e => e.paymentMethod === 'salary').length === 0 ? (
+                          <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Nenhum gasto adicionado
+                          </p>
+                        ) : (
+                          expenses.filter(e => e.paymentMethod === 'salary').map(expense => {
+                            const Icon = iconMap[expense.iconType];
+                            return (
+                              <div key={expense.id} className={`flex items-center justify-between p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                <div className="flex items-center gap-3">
+                                  <Icon className="w-5 h-5 text-blue-500" />
+                                  <div>
+                                    <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : ''}`}>
+                                      {expense.category}
+                                    </p>
+                                    <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                      R$ {expense.amount.toFixed(2)}
+                                    </p>
+                                  </div>
                                 </div>
                                 <Button
                                   onClick={() => removeExpense(expense.id)}
-                                  variant="outline"
+                                  variant="ghost"
                                   size="sm"
-                                  className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
+                                  className="hover:bg-red-50"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <Trash2 className="w-4 h-4 text-red-500" />
                                 </Button>
                               </div>
-                            </motion.div>
-                          );
-                        })}
-                        
-                        {/* Empty state - Salary */}
-                        {expenses.filter(e => e.paymentMethod === 'salary').length === 0 && (
-                          <div className="text-center py-8 text-gray-500">
-                            <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm mb-1">Nenhum gasto com salário</p>
-                            <p className="text-xs">Adicione seus gastos acima</p>
-                          </div>
+                            );
+                          })
                         )}
+                      </div>
+
+                      {/* Total */}
+                      <div className={`pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`font-semibold ${isDarkMode ? 'text-white' : ''}`}>Total:</span>
+                          <span className="font-bold text-red-600">R$ {salaryExpenses.toFixed(2)}</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1801,412 +1404,233 @@ export default function App() {
 
                 {/* RIGHT BOARD: CREDIT CARD EXPENSES */}
                 <div className="space-y-4">
-                  {/* Summary Card - Credit */}
-                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : 'bg-gradient-to-br from-purple-50 to-pink-50'}`}>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💳 Limite Total</span>
-                          <span className="font-semibold text-purple-600">R$ {creditLimit.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>💸 Valor Gasto</span>
-                          <span className="font-semibold text-red-600">R$ {creditExpenses.toFixed(2)}</span>
-                        </div>
-                        <div className={`h-px my-2 ${isDarkMode ? 'bg-gray-600' : 'bg-gray-300'}`}></div>
-                        <div className="flex items-center justify-between">
-                          <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>✅ Limite Restante</span>
-                          <span className="font-bold text-lg text-purple-600">R$ {availableCredit.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Progress and Charts - Credit */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Uso do Cartão</CardTitle>
-                      </CardHeader>
-                      <CardContent className="flex flex-col items-center py-2">
-                        <ProgressRing 
-                          percentage={creditPercentage} 
-                          size={80}
-                          color={creditPercentage > 80 ? '#EF4444' : creditPercentage > 60 ? '#F59E0B' : '#8B5CF6'}
-                        />
-                        <p className={`text-xs mt-2 text-center ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {creditPercentage > 80 ? 'Quase cheio!' : 
-                           creditPercentage > 60 ? 'Cuidado' : 'Controlado'}
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className={`text-xs ${isDarkMode ? 'text-white' : ''}`}>Por Categoria</CardTitle>
-                      </CardHeader>
-                      <CardContent className="py-2">
-                        {creditPieChartData.length > 0 ? (
-                          <div className="h-24">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RechartsPieChart>
-                                <Pie
-                                  data={creditPieChartData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={15}
-                                  outerRadius={35}
-                                  paddingAngle={2}
-                                  dataKey="value"
-                                >
-                                  {creditPieChartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Pie>
-                                <Tooltip 
-                                  formatter={(value: any) => [`R$ ${value.toFixed(2)}`, 'Valor']}
-                                />
-                              </RechartsPieChart>
-                            </ResponsiveContainer>
-                          </div>
-                        ) : (
-                          <div className="h-24 flex items-center justify-center text-gray-400 text-xs">
-                            Sem dados
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-
-                  {/* Expense Management - Credit */}
-                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#475569]' : ''}`}>
+                  <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                     <CardHeader>
                       <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
-                        <div className="p-2 rounded-lg bg-purple-500">
-                          <CreditCard className="w-4 h-4 text-white" />
-                        </div>
-                        💳 Prancheta de Gastos do Cartão
+                        💳 Gastos do Cartão
                       </CardTitle>
-                      <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Gastos feitos no cartão de crédito
-                      </div>
                     </CardHeader>
-                    <CardContent>
-                      {/* Add new expense - Credit */}
-                      <div className="space-y-3 mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-                        <p className="text-xs text-gray-700 font-medium">Adicionar novo gasto</p>
+                    <CardContent className="space-y-3">
+                      {/* Add expense form with installments */}
+                      <div className="space-y-2">
                         <Input
-                          placeholder="Nome da categoria"
+                          placeholder="Nome da compra"
                           value={newCategory}
                           onChange={(e) => setNewCategory(e.target.value)}
-                          className="h-10 rounded-lg bg-white"
+                          className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
-                        <div className="flex gap-2">
-                          <Input
-                            placeholder="Valor (R$)"
-                            type="number"
-                            value={newAmount}
-                            onChange={(e) => setNewAmount(e.target.value)}
-                            className="flex-1 h-10 rounded-lg bg-white"
-                          />
-                          <Button 
-                            onClick={() => addExpense('credit')} 
-                            className="rounded-lg px-4 h-10 hover:brightness-110 transition-all bg-purple-600 hover:bg-purple-700"
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Input
+                          type="number"
+                          placeholder="Valor total"
+                          value={newAmount}
+                          onChange={(e) => setNewAmount(e.target.value)}
+                          className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Número de parcelas (opcional)"
+                          value={newInstallments}
+                          onChange={(e) => setNewInstallments(e.target.value)}
+                          className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                        />
+                        <Button
+                          onClick={() => addExpense('credit')}
+                          className="w-full h-10"
+                          style={{ backgroundColor: '#046BF4' }}
+                        >
+                          <PlusCircle className="w-4 h-4 mr-2" />
+                          Adicionar Compra
+                        </Button>
                       </div>
 
-                      {/* Expenses list - Credit */}
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {expenses.filter(e => e.paymentMethod === 'credit').map((expense) => {
-                          const IconComponent = iconMap[expense.iconType];
-                          return (
-                            <motion.div
-                              key={expense.id}
-                              initial={{ opacity: 0, y: 20 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className="flex items-center justify-between p-3 rounded-lg border bg-white shadow-sm"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-purple-100">
-                                  <IconComponent className="w-4 h-4 text-purple-600" />
+                      {/* Expense list with installments */}
+                      <div className="space-y-2">
+                        {expenses.filter(e => e.paymentMethod === 'credit').length === 0 ? (
+                          <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Nenhuma compra adicionada
+                          </p>
+                        ) : (
+                          expenses.filter(e => e.paymentMethod === 'credit').map(expense => {
+                            const Icon = iconMap[expense.iconType];
+                            const showInstallments = expense.installments && expense.totalInstallments;
+                            return (
+                              <div key={expense.id} className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <Icon className="w-5 h-5 text-purple-500" />
+                                    <div>
+                                      <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : ''}`}>
+                                        {expense.category}
+                                      </p>
+                                      {showInstallments ? (
+                                        <>
+                                          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            Parcela {expense.installments}/{expense.totalInstallments} - R$ {expense.amount.toFixed(2)}
+                                          </p>
+                                          <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                            Total: R$ {(expense.amount * expense.totalInstallments).toFixed(2)}
+                                          </p>
+                                          {expense.dueDate && (
+                                            <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                              Venc: {expense.dueDate}
+                                            </p>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                          R$ {expense.amount.toFixed(2)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    onClick={() => removeExpense(expense.id)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                  </Button>
                                 </div>
-                                <div>
-                                  <span className="font-medium text-sm">{expense.category}</span>
-                                  <p className="text-xs text-gray-500">
-                                    {creditExpenses > 0 ? ((expense.amount / creditExpenses) * 100).toFixed(1) : '0'}% da fatura
-                                  </p>
-                                </div>
+                                {showInstallments && expense.installments! < expense.totalInstallments! && (
+                                  <Button
+                                    onClick={() => payInstallment(expense.id)}
+                                    size="sm"
+                                    className="w-full h-8 text-xs mt-2"
+                                    style={{ backgroundColor: '#10B981' }}
+                                  >
+                                    Pagar Próxima Parcela
+                                  </Button>
+                                )}
                               </div>
-                              <div className="flex items-center gap-2">
-                                <div className="text-right">
-                                  <span className="font-semibold text-sm">R$ {expense.amount.toFixed(2)}</span>
-                                </div>
-                                <Button
-                                  onClick={() => removeExpense(expense.id)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-lg text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                        
-                        {/* Empty state - Credit */}
-                        {expenses.filter(e => e.paymentMethod === 'credit').length === 0 && (
-                          <div className="text-center py-8 text-gray-500">
-                            <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm mb-1">Nenhum gasto no cartão</p>
-                            <p className="text-xs">Adicione seus gastos acima</p>
-                          </div>
+                            );
+                          })
                         )}
+                      </div>
+
+                      {/* Total */}
+                      <div className={`pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`font-semibold ${isDarkMode ? 'text-white' : ''}`}>Total devido este mês:</span>
+                          <span className="font-bold text-purple-600">R$ {creditBill.toFixed(2)}</span>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
                 </div>
-
               </div>
             </TabsContent>
 
-            {/* 🔵 PAYMENT TAB - Mobile First */}
+            {/* 🔵 PAYMENT TAB */}
             <TabsContent value="payment" className="space-y-4">
-              {/* Bill Summary Card */}
-              <Card className="shadow-md border-0 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50">
+              <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                      <FileText className="w-4 h-4 text-white" />
-                    </div>
-                    🧾 Fatura do Cartão de Crédito
+                  <CardTitle className={`flex items-center gap-2 ${isDarkMode ? 'text-white' : ''}`}>
+                    <CreditCard className="w-5 h-5" />
+                    Pagar Fatura do Cartão
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-3 p-4 bg-white rounded-lg border-2 border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">💳 Valor da Fatura Atual</span>
-                      <span className="font-bold text-lg text-purple-600">R$ {creditBill.toFixed(2)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-700">✅ Já Pago</span>
-                      <span className="font-semibold text-green-600">R$ {creditBillAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="h-px bg-gray-300"></div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-800">📋 Saldo Devedor</span>
-                      <span className="font-bold text-xl text-red-600">
-                        R$ {(creditBill - creditBillAmount).toFixed(2)}
-                      </span>
-                    </div>
+                  <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-purple-50'}`}>
+                    <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Fatura atual do cartão:
+                    </p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      R$ {creditBill.toFixed(2)}
+                    </p>
                   </div>
 
-                  {creditBill > creditBillAmount && (
-                    <>
-                      <Alert className="border-blue-200 bg-blue-50 rounded-xl">
-                        <AlertDescription className="text-blue-800 text-xs">
-                          💰 Saldo disponível no salário: <strong>R$ {remainingSalary.toFixed(2)}</strong>
-                        </AlertDescription>
-                      </Alert>
+                  <div className="space-y-3">
+                    <Label className={isDarkMode ? 'text-white' : ''}>Valor do Pagamento</Label>
+                    <Input
+                      type="number"
+                      placeholder="Digite o valor a pagar"
+                      value={billPaymentAmount}
+                      onChange={(e) => setBillPaymentAmount(e.target.value)}
+                      className={`h-12 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                    />
+                    <Button
+                      onClick={payCreditBill}
+                      className="w-full h-12"
+                      style={{ backgroundColor: '#046BF4' }}
+                    >
+                      Confirmar Pagamento
+                    </Button>
+                  </div>
 
-                      <div className="space-y-3 p-4 bg-white rounded-lg border border-gray-200">
-                        <Label className="text-sm font-medium">Valor do Pagamento</Label>
-                        <Input
-                          type="number"
-                          placeholder="Digite o valor a pagar"
-                          value={billPaymentAmount}
-                          onChange={(e) => setBillPaymentAmount(e.target.value)}
-                          className="h-12 rounded-lg text-lg"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => setBillPaymentAmount((creditBill - creditBillAmount).toFixed(2))}
-                            variant="outline"
-                            className="flex-1 rounded-lg text-xs"
-                          >
-                            Pagar Total
-                          </Button>
-                          <Button
-                            onClick={() => setBillPaymentAmount(((creditBill - creditBillAmount) / 2).toFixed(2))}
-                            variant="outline"
-                            className="flex-1 rounded-lg text-xs"
-                          >
-                            Pagar 50%
-                          </Button>
-                        </div>
-                        <Button
-                          onClick={payCreditBill}
-                          className="w-full h-12 rounded-lg text-white font-medium shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-                          style={{ backgroundColor: '#046BF4' }}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Confirmar Pagamento
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {creditBill <= creditBillAmount && (
-                    <div className="text-center py-8">
-                      <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
-                      <p className="text-green-700 font-medium">✅ Fatura Paga!</p>
-                      <p className="text-sm text-gray-600 mt-1">Você não tem saldo devedor no momento.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Payment Info Card */}
-              <Card className="shadow-md border-0 rounded-xl">
-                <CardHeader>
-                  <CardTitle className="text-sm">ℹ️ Como Funciona</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-xs text-gray-600">
-                  <p>• O pagamento da fatura sai do <strong>saldo do seu salário</strong></p>
-                  <p>• Após o pagamento, o <strong>limite do cartão é liberado</strong></p>
-                  <p>• Você pode pagar o valor total ou parcial da fatura</p>
-                  <p>• Os gastos do cartão não afetam diretamente seu salário</p>
+                  <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-blue-50'}`}>
+                    <p className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Saldo disponível no salário:
+                    </p>
+                    <p className="text-xl font-bold text-blue-600">
+                      R$ {remainingSalary.toFixed(2)}
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            {/* 🔵 AI TAB - Mobile First */}
+            {/* 🔵 AI TAB */}
             <TabsContent value="ai" className="space-y-4">
-              <Card className="shadow-md border-0 rounded-xl">
+              <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <div className="p-2 rounded-lg" style={{ backgroundColor: '#046BF4' }}>
-                      <Brain className="w-4 h-4 text-white" />
-                    </div>
-                    Assistente IA
+                  <CardTitle className={`flex items-center gap-2 ${isDarkMode ? 'text-white' : ''}`}>
+                    <Brain className="w-5 h-5" />
+                    Investimentos Inteligentes
                   </CardTitle>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Explore oportunidades de investimento personalizadas
+                  </p>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-                    <div className="flex items-start gap-3 mb-3">
-                      <TrendingUp className="w-4 h-4 text-blue-600 mt-1" />
-                      <div>
-                        <h4 className="font-medium text-blue-900 text-sm">Sugestões Personalizadas</h4>
-                        <p className="text-xs text-blue-700 mt-1">
-                          Com saldo de R$ {remainingSalary.toFixed(2)}, recomendamos diversificar seus investimentos.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span>Reserva de emergência: 30%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                        <span>Renda fixa: 50%</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span>Renda variável: 20%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Alert className="border-orange-200 bg-orange-50 rounded-xl">
-                    <AlertTriangle className="h-4 w-4 text-orange-600" />
-                    <AlertDescription className="text-orange-800 text-xs">
-                      <strong>Aviso:</strong> Investimentos envolvem riscos. Pode haver perda total. 
-                      Consulte sempre um especialista.
-                    </AlertDescription>
-                  </Alert>
-
-                  {/* Investment Options - Mobile */}
-                  <Card className="shadow-md border-0 rounded-xl">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm">Opções de Investimento</CardTitle>
-                      <p className="text-xs text-gray-600">
-                        Disponível: R$ {remainingSalary > 0 ? remainingSalary.toFixed(2) : '0.00'}
-                      </p>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {investments.map((investment) => {
-                        const IconComponent = investment.icon;
-                        const isAffordable = remainingSalary >= investment.minInvestment;
-                        
-                        return (
-                          <motion.div
-                            key={investment.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`p-3 rounded-lg border bg-white shadow-sm transition-all cursor-pointer ${
-                              isAffordable ? 'hover:border-blue-300' : 'opacity-60'
-                            }`}
-                            onClick={() => isAffordable && selectInvestment(investment)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div 
-                                  className="p-2 rounded-lg"
-                                  style={{ backgroundColor: `${investment.color}20` }}
-                                >
-                                  <IconComponent 
-                                    className="w-4 h-4" 
-                                    style={{ color: investment.color }} 
-                                  />
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium text-sm">{investment.name}</h4>
-                                    <span 
-                                      className="text-xs px-2 py-1 rounded-full"
-                                      style={{ 
-                                        backgroundColor: `${getRiskColor(investment.riskLevel)}20`,
-                                        color: getRiskColor(investment.riskLevel)
-                                      }}
-                                    >
-                                      {getRiskLabel(investment.riskLevel)}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs text-gray-600">{investment.type}</p>
-                                </div>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {investments.map(investment => {
+                      const Icon = investment.icon;
+                      return (
+                        <Card key={investment.id} className={`border-0 shadow-md hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-[#27272a]' : ''}`}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className="p-3 rounded-lg" style={{ backgroundColor: `${investment.color}20` }}>
+                                <Icon className="w-6 h-6" style={{ color: investment.color }} />
                               </div>
-                              <div className="text-right">
-                                <p className="text-xs font-medium text-green-600">
-                                  ±{investment.expectedReturn}%
+                              <div className="flex-1">
+                                <h3 className={`font-semibold mb-1 ${isDarkMode ? 'text-white' : ''}`}>
+                                  {investment.name}
+                                </h3>
+                                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {investment.type}
                                 </p>
-                                <p className="text-xs text-gray-500">
-                                  Min: R$ {investment.minInvestment}
-                                </p>
-                                {!isAffordable && (
-                                  <p className="text-xs text-red-500">
-                                    Saldo baixo
-                                  </p>
-                                )}
                               </div>
                             </div>
-                            
-                            {investment.status === 'purchased' && investment.profitLoss !== undefined && (
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span>Investido: R$ {investment.purchaseAmount?.toFixed(2)}</span>
-                                  <div className="flex items-center gap-1">
-                                    {investment.profitLoss >= 0 ? (
-                                      <TrendingUp className="w-3 h-3 text-green-600" />
-                                    ) : (
-                                      <TrendingDown className="w-3 h-3 text-red-600" />
-                                    )}
-                                    <span className={investment.profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                      {investment.profitLoss >= 0 ? '+' : ''}R$ {investment.profitLoss.toFixed(2)}
-                                    </span>
-                                  </div>
-                                </div>
+                            <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                              {investment.description}
+                            </p>
+                            <div className="space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Retorno esperado:</span>
+                                <span className="font-semibold text-green-600">
+                                  {investment.expectedReturn}%
+                                </span>
                               </div>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                    </CardContent>
-                  </Card>
+                              <div className="flex justify-between text-sm">
+                                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Investimento mín:</span>
+                                <span className={isDarkMode ? 'text-white' : ''}>
+                                  R$ {investment.minInvestment}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Risco:</span>
+                                <span className="font-medium" style={{ color: investment.color }}>
+                                  {investment.riskLevel === 'low' ? 'Baixo' : 
+                                   investment.riskLevel === 'medium' ? 'Médio' : 'Alto'}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -2216,183 +1640,5 @@ export default function App() {
     );
   }
 
-  // Continue with other screens (investment details, etc.) - keeping them as they were for now
-  // Investment Details Screen
-  if (currentScreen === 'investment-details') {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <div className="px-6 py-4 text-center shadow-sm" style={{ backgroundColor: '#046BF4' }}>
-          <img 
-            src={logoDefinitiva} 
-            alt="BudgetPro" 
-            className="w-20 h-20 mx-auto object-contain"
-          />
-          <h1 className="text-white text-lg">BudgetPro</h1>
-        </div>
-
-        <div className="px-4 py-6">
-          {/* Back Button */}
-          <Button
-            onClick={() => setCurrentScreen('dashboard')}
-            variant="outline"
-            className="mb-4 rounded-xl"
-            style={{ borderColor: '#046BF4', color: '#046BF4' }}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-
-          {selectedInvestment && (
-            <div className="space-y-4">
-              {/* Investment Header */}
-              <Card className="shadow-lg border-0 rounded-2xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div 
-                      className="p-3 rounded-xl"
-                      style={{ backgroundColor: `${selectedInvestment.color}20` }}
-                    >
-                      <selectedInvestment.icon 
-                        className="w-8 h-8" 
-                        style={{ color: selectedInvestment.color }} 
-                      />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-semibold">{selectedInvestment.name}</h2>
-                      <p className="text-gray-600">{selectedInvestment.type}</p>
-                      <span 
-                        className="inline-block text-xs px-2 py-1 rounded-full mt-1"
-                        style={{ 
-                          backgroundColor: `${getRiskColor(selectedInvestment.riskLevel)}20`,
-                          color: getRiskColor(selectedInvestment.riskLevel)
-                        }}
-                      >
-                        {getRiskLabel(selectedInvestment.riskLevel)} Risco
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-gray-700">{selectedInvestment.description}</p>
-                </CardContent>
-              </Card>
-
-              {/* Investment Details */}
-              <Card className="shadow-lg border-0 rounded-2xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl" style={{ backgroundColor: '#046BF4' }}>
-                      <FileText className="w-5 h-5 text-white" />
-                    </div>
-                    Detalhes do Investimento
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Retorno Esperado:</span>
-                      <span className="font-medium text-green-600">±{selectedInvestment.expectedReturn}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Nível de Risco:</span>
-                      <span className="font-medium">{getRiskLabel(selectedInvestment.riskLevel)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Mín. Investimento:</span>
-                      <span className="font-medium">R$ {selectedInvestment.minInvestment.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Máx. Investimento:</span>
-                      <span className="font-medium">R$ {selectedInvestment.maxInvestment.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Historical Performance Chart */}
-              <Card className="shadow-lg border-0 rounded-2xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl" style={{ backgroundColor: '#046BF4' }}>
-                      <TrendingUp className="w-5 h-5 text-white" />
-                    </div>
-                    Desempenho Histórico
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={selectedInvestment.historicalData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis 
-                          dataKey="month" 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 12, fill: '#666' }}
-                        />
-                        <YAxis 
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fontSize: 12, fill: '#666' }}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <Tooltip 
-                          formatter={(value: any) => [`${value}%`, 'Performance']}
-                          labelFormatter={(label) => `Mês: ${label}`}
-                          contentStyle={{ 
-                            backgroundColor: 'white', 
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                          }}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="value" 
-                          stroke={selectedInvestment.color} 
-                          strokeWidth={3}
-                          dot={{ fill: selectedInvestment.color, strokeWidth: 2, r: 4 }}
-                          activeDot={{ r: 6, fill: selectedInvestment.color }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Risk Warning */}
-              <Alert className="border-orange-200 bg-orange-50 rounded-2xl">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-                <AlertDescription className="text-orange-800">
-                  <strong>Aviso de risco:</strong> Esse investimento pode gerar perda total. Invista com cautela.
-                  Os valores apresentados são simulações e não garantem rendimentos futuros.
-                </AlertDescription>
-              </Alert>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <Button
-                  onClick={() => setCurrentScreen('investment-purchase')}
-                  className="flex-1 h-12 rounded-2xl text-white shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 hover:brightness-110"
-                  style={{ backgroundColor: '#046BF4' }}
-                >
-                  Investir Agora
-                </Button>
-                <Button
-                  onClick={() => setCurrentScreen('dashboard')}
-                  variant="outline"
-                  className="flex-1 h-12 rounded-2xl border-2 hover:bg-sky-50 transition-all"
-                  style={{ borderColor: '#046BF4', color: '#046BF4' }}
-                >
-                  Voltar ao Dashboard
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Continue with other screens...
   return null;
 }
