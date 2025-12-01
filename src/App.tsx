@@ -1259,22 +1259,18 @@ export default function App() {
                           tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#666' }}
                           tickFormatter={(value) => `R$ ${value}`}
                         />
-                        <Tooltip 
-                          formatter={(value: any, name: string) => [
-                            `R$ ${Number(value).toFixed(2)}`,
-                            name === 'salario' ? 'Salário' :
-                            name === 'gastos' ? 'Gastos' : 'Investimentos'
-                          ]}
-                          labelFormatter={(label) => `Dia: ${label}`}
-                          contentStyle={{ 
-                            backgroundColor: isDarkMode ? '#1e293b' : 'white', 
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                            fontSize: '12px',
-                            color: isDarkMode ? 'white' : 'black'
+                       <Tooltip
+                         contentStyle={{
+                         backgroundColor: isDarkMode ? '#1e293b' : 'white',
+                         border: '1px solid #e0e0e0',
+                         borderRadius: '8px',
+                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                         fontSize: '12px',
+                         color: isDarkMode ? 'white' : 'black'
                           }}
-                        />
+                         labelFormatter={(label) => `Dia ${label}`}
+                         formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`}
+                         />
                         <Line 
                           type="monotone" 
                           dataKey="salario" 
