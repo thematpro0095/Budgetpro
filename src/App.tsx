@@ -40,13 +40,16 @@ import {
   Moon,
   Sun,
   Edit2,
-  ChevronDown
+  ChevronDown,
+  LogOut,
+  X,
+  TrendingUpDown
 } from 'lucide-react';
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, Pie } from 'recharts';
-import logoDefinitiva from './assets/logo.png';
+import logoDefinitiva from 'figma:asset/0314ca9ef2ad7a1d30a0d23fdfefdf6f06ebf23c.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
-type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard' | 'investment-details' | 'investment-purchase' | 'investment-result';
+type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard';
 type IconType = 'coffee' | 'car' | 'home' | 'shopping' | 'smartphone';
 type RiskLevel = 'low' | 'medium' | 'high';
 type InvestmentStatus = 'available' | 'purchased' | 'completed';
@@ -61,6 +64,18 @@ interface Expense {
   installments?: number;
   totalInstallments?: number;
   dueDate?: string;
+  dateAdded: string;
+}
+
+interface DailyData {
+  day: number;
+  salario: number;
+  cartao: number;
+  investimentos: number;
+}
+
+interface MonthlyRecord {
+  [key: string]: DailyData[];
 }
 
 interface Investment {
@@ -80,6 +95,13 @@ interface Investment {
   purchaseDate?: Date;
   currentValue?: number;
   profitLoss?: number;
+}
+
+interface UserInvestment {
+  id: string;
+  investmentId: string;
+  amount: number;
+  date: string;
 }
 
 // Icon mapping
@@ -179,6 +201,30 @@ const MOCK_INVESTMENTS: Investment[] = [
   }
 ];
 
+// Utility functions
+const generateToken = () => {
+  return `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+const getCurrentMonthKey = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getMonthKeyFromName = (monthName: string) => {
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const monthIndex = months.indexOf(monthName);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(monthIndex + 1).padStart(2, '0')}`;
+};
+
+const getCurrentMonthName = () => {
+  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  return months[new Date().getMonth()];
+};
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [email, setEmail] = useState('');
@@ -209,27 +255,45 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   
-  // Expenses state - start empty
+  // Expenses state
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     const saved = localStorage.getItem('budgetProExpenses');
     return saved ? JSON.parse(saved) : [];
   });
   
+  // Monthly data for charts
+  const [monthlyData, setMonthlyData] = useState<MonthlyRecord>(() => {
+    const saved = localStorage.getItem('budgetProMonthlyData');
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // User investments
+  const [userInvestments, setUserInvestments] = useState<UserInvestment[]>(() => {
+    const saved = localStorage.getItem('budgetProUserInvestments');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
   const [creditBillAmount, setCreditBillAmount] = useState(0);
   const [billPaymentAmount, setBillPaymentAmount] = useState('');
-  const [newCategory, setNewCategory] = useState('');
-  const [newAmount, setNewAmount] = useState('');
-  const [newInstallments, setNewInstallments] = useState('');
+  
+  // CORRIGIDO BUG 2: Inputs separados para cada prancheta
+  const [newCategorySalary, setNewCategorySalary] = useState('');
+  const [newAmountSalary, setNewAmountSalary] = useState('');
+  const [newCategoryCredit, setNewCategoryCredit] = useState('');
+  const [newAmountCredit, setNewAmountCredit] = useState('');
+  const [newInstallmentsCredit, setNewInstallmentsCredit] = useState('');
+  
   const [editingSalary, setEditingSalary] = useState(false);
   const [editingCredit, setEditingCredit] = useState(false);
   const [tempSalary, setTempSalary] = useState(salary.toString());
   const [tempCredit, setTempCredit] = useState(creditLimit.toString());
-  const [selectedMonth, setSelectedMonth] = useState('Dezembro');
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
+  const [showInvestmentWarning, setShowInvestmentWarning] = useState(true);
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
+  const [investmentAmount, setInvestmentAmount] = useState('');
 
   // Investment states
   const [investments, setInvestments] = useState<Investment[]>(MOCK_INVESTMENTS);
-  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null);
-  const [investmentAmount, setInvestmentAmount] = useState('');
 
   // Save to localStorage
   useEffect(() => {
@@ -244,11 +308,24 @@ export default function App() {
     localStorage.setItem('budgetProExpenses', JSON.stringify(expenses));
   }, [expenses]);
 
+  useEffect(() => {
+    localStorage.setItem('budgetProMonthlyData', JSON.stringify(monthlyData));
+  }, [monthlyData]);
+
+  useEffect(() => {
+    localStorage.setItem('budgetProUserInvestments', JSON.stringify(userInvestments));
+  }, [userInvestments]);
+
   // Auto-navigate from splash to login
   useEffect(() => {
     if (currentScreen === 'splash') {
       const timer = setTimeout(() => {
-        setCurrentScreen('login');
+        const token = localStorage.getItem('budgetProToken');
+        if (token) {
+          setCurrentScreen('dashboard');
+        } else {
+          setCurrentScreen('login');
+        }
       }, 10000);
       return () => clearTimeout(timer);
     }
@@ -285,54 +362,118 @@ export default function App() {
   
   const totalExpenses = React.useMemo(() => salaryExpenses + creditExpenses, [salaryExpenses, creditExpenses]);
 
-  const { remainingSalary, availableCredit, totalDebt, creditBill } = React.useMemo(() => {
+  const currentCreditBill = React.useMemo(() => {
+    return Math.max(0, creditExpenses - creditBillAmount);
+  }, [creditExpenses, creditBillAmount]);
+
+  const { remainingSalary, availableCredit, totalDebt } = React.useMemo(() => {
     const currentSalaryUsed = salaryExpenses + creditBillAmount;
-    const currentCreditBill = creditExpenses;
-    const currentCreditUsed = currentCreditBill;
+    const currentCreditUsed = creditExpenses;
     const currentDebt = Math.max(0, currentCreditUsed - creditLimit);
     
     return {
       remainingSalary: salary - currentSalaryUsed,
       availableCredit: creditLimit - currentCreditUsed,
-      totalDebt: currentDebt,
-      creditBill: currentCreditBill
+      totalDebt: currentDebt
     };
   }, [salaryExpenses, creditExpenses, salary, creditLimit, creditBillAmount]);
 
-  const expensePercentage = React.useMemo(() => 
-    salary > 0 ? Math.min(((salaryExpenses / salary) * 100), 100) : 0, 
-    [salaryExpenses, salary]
-  );
+  // CORRIGIDO BUG 3: Resumo do mês inclui gastos de salário + cartão
+  const expensePercentage = React.useMemo(() => {
+    if (salary <= 0) return 0;
+    const totalUsed = salaryExpenses + creditExpenses;
+    return Math.min(((totalUsed / salary) * 100), 100);
+  }, [salaryExpenses, creditExpenses, salary]);
   
   const creditPercentage = React.useMemo(() => 
     creditLimit > 0 ? Math.min(((creditExpenses / creditLimit) * 100), 100) : 0, 
     [creditExpenses, creditLimit]
   );
 
-  // Generate monthly data based on current month
-  const monthlyData = React.useMemo(() => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // Total investments
+  const totalInvestments = React.useMemo(() => 
+    userInvestments.reduce((sum, inv) => sum + inv.amount, 0), 
+    [userInvestments]
+  );
+
+  // Initialize monthly data for a specific month
+  const initializeMonthData = (monthKey: string) => {
+    if (monthlyData[monthKey]) return monthlyData[monthKey];
     
-    const data = [];
+    const [year, month] = monthKey.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    
+    const data: DailyData[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
-      // Simulate realistic data
-      const baseSalary = salary / daysInMonth;
-      const baseExpense = salaryExpenses / daysInMonth;
-      const baseInvestment = (salary * 0.1) / daysInMonth;
-      
       data.push({
-        day: day.toString(),
-        salario: baseSalary * day,
-        gastos: baseExpense * day * (0.8 + Math.random() * 0.4),
-        investimentos: baseInvestment * day * (0.5 + Math.random() * 1.5)
+        day,
+        salario: salary,
+        cartao: creditLimit,
+        investimentos: 0
       });
     }
     
     return data;
-  }, [salary, salaryExpenses]);
+  };
+
+  // CORRIGIDO BUG 1: Get chart data with proper calculations for 3 separate lines
+  const getChartData = () => {
+    const monthKey = getMonthKeyFromName(selectedMonth);
+    let data = monthlyData[monthKey];
+    
+    if (!data) {
+      data = initializeMonthData(monthKey);
+    }
+    
+    const isCurrentMonth = monthKey === getCurrentMonthKey();
+    const today = new Date().getDate();
+    
+    // Calculate cumulative values for each day
+    const processedData = data.map(dayData => {
+      // Salário: começa com valor total e diminui com gastos
+      const dayExpensesSalary = expenses
+        .filter(e => e.paymentMethod === 'salary')
+        .filter(e => {
+          const expenseDate = new Date(e.dateAdded);
+          const expenseMonth = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+          return expenseMonth === monthKey && expenseDate.getDate() <= dayData.day;
+        })
+        .reduce((sum, e) => sum + e.amount, 0);
+      
+      // Cartão: começa com limite total e diminui com gastos
+      const dayExpensesCredit = expenses
+        .filter(e => e.paymentMethod === 'credit')
+        .filter(e => {
+          const expenseDate = new Date(e.dateAdded);
+          const expenseMonth = `${expenseDate.getFullYear()}-${String(expenseDate.getMonth() + 1).padStart(2, '0')}`;
+          return expenseMonth === monthKey && expenseDate.getDate() <= dayData.day;
+        })
+        .reduce((sum, e) => sum + e.amount, 0);
+      
+      // Investimentos: começa em 0 e aumenta com investimentos
+      const dayInvestments = userInvestments
+        .filter(inv => {
+          const invDate = new Date(inv.date);
+          const invMonth = `${invDate.getFullYear()}-${String(invDate.getMonth() + 1).padStart(2, '0')}`;
+          return invMonth === monthKey && invDate.getDate() <= dayData.day;
+        })
+        .reduce((sum, inv) => sum + inv.amount, 0);
+      
+      return {
+        day: dayData.day,
+        salario: Math.max(0, salary - dayExpensesSalary),
+        cartao: Math.max(0, creditLimit - dayExpensesCredit),
+        investimentos: dayInvestments
+      };
+    });
+    
+    // If current month, show only up to today
+    if (isCurrentMonth) {
+      return processedData.filter(d => d.day <= today);
+    }
+    
+    return processedData;
+  };
 
   // Progress ring component
   const ProgressRing = ({ 
@@ -392,10 +533,12 @@ export default function App() {
     }
 
     const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
+    const user = users.find((u: any) => u.email === email && u.passwordHash === btoa(password));
     
     if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
+      const token = generateToken();
+      localStorage.setItem('budgetProToken', token);
+      localStorage.setItem('budgetProUser', JSON.stringify({ name: user.name, email: user.email }));
       setCurrentScreen('dashboard');
     } else {
       alert('Email ou senha incorretos. Verifique seus dados ou crie uma conta.');
@@ -425,7 +568,12 @@ export default function App() {
       return;
     }
 
-    const newUser = { id: Date.now(), name, email, password };
+    const newUser = { 
+      id: Date.now(), 
+      name, 
+      email, 
+      passwordHash: btoa(password)
+    };
     users.push(newUser);
     localStorage.setItem('budgetProUsers', JSON.stringify(users));
     
@@ -483,7 +631,7 @@ export default function App() {
     const userIndex = users.findIndex((u: any) => u.email === email);
     
     if (userIndex !== -1) {
-      users[userIndex].password = newPassword;
+      users[userIndex].passwordHash = btoa(newPassword);
       localStorage.setItem('budgetProUsers', JSON.stringify(users));
       localStorage.removeItem('resetEmail');
       
@@ -499,32 +647,65 @@ export default function App() {
     }
   }, [newPassword, confirmNewPassword]);
 
-  const addExpense = React.useCallback((paymentMethod: PaymentMethod) => {
-    if (newCategory && newAmount) {
+  const handleLogout = React.useCallback(() => {
+    localStorage.removeItem('budgetProToken');
+    localStorage.removeItem('budgetProUser');
+    setCurrentScreen('login');
+  }, []);
+
+  // CORRIGIDO BUG 2: Função addExpense usa inputs separados
+  const addExpenseSalary = React.useCallback(() => {
+    if (newCategorySalary && newAmountSalary) {
       const iconTypes: IconType[] = ['shopping', 'smartphone', 'coffee'];
       const randomIconType = iconTypes[Math.floor(Math.random() * iconTypes.length)];
       
-      const amount = parseFloat(newAmount);
-      const installments = newInstallments ? parseInt(newInstallments) : undefined;
+      const amount = parseFloat(newAmountSalary);
+      const now = new Date();
+      const dateAdded = now.toISOString().split('T')[0];
       
-      setExpenses(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          category: newCategory,
-          amount: installments ? amount / installments : amount,
-          iconType: randomIconType,
-          paymentMethod: paymentMethod,
-          installments: installments ? 1 : undefined,
-          totalInstallments: installments,
-          dueDate: installments ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR') : undefined
-        }
-      ]);
-      setNewCategory('');
-      setNewAmount('');
-      setNewInstallments('');
+      const newExpense: Expense = {
+        id: Date.now().toString(),
+        category: newCategorySalary,
+        amount: amount,
+        iconType: randomIconType,
+        paymentMethod: 'salary',
+        dateAdded
+      };
+      
+      setExpenses(prev => [...prev, newExpense]);
+      setNewCategorySalary('');
+      setNewAmountSalary('');
     }
-  }, [newCategory, newAmount, newInstallments]);
+  }, [newCategorySalary, newAmountSalary]);
+
+  const addExpenseCredit = React.useCallback(() => {
+    if (newCategoryCredit && newAmountCredit) {
+      const iconTypes: IconType[] = ['shopping', 'smartphone', 'coffee'];
+      const randomIconType = iconTypes[Math.floor(Math.random() * iconTypes.length)];
+      
+      const amount = parseFloat(newAmountCredit);
+      const installments = newInstallmentsCredit ? parseInt(newInstallmentsCredit) : undefined;
+      const now = new Date();
+      const dateAdded = now.toISOString().split('T')[0];
+      
+      const newExpense: Expense = {
+        id: Date.now().toString(),
+        category: newCategoryCredit,
+        amount: installments ? amount / installments : amount,
+        iconType: randomIconType,
+        paymentMethod: 'credit',
+        installments: installments ? 1 : undefined,
+        totalInstallments: installments,
+        dueDate: installments ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR') : undefined,
+        dateAdded
+      };
+      
+      setExpenses(prev => [...prev, newExpense]);
+      setNewCategoryCredit('');
+      setNewAmountCredit('');
+      setNewInstallmentsCredit('');
+    }
+  }, [newCategoryCredit, newAmountCredit, newInstallmentsCredit]);
   
   const payCreditBill = React.useCallback(() => {
     const paymentAmount = parseFloat(billPaymentAmount);
@@ -534,8 +715,8 @@ export default function App() {
       return;
     }
     
-    if (paymentAmount > creditBill) {
-      alert(`O valor do pagamento não pode ser maior que a fatura (R$ ${creditBill.toFixed(2)}).`);
+    if (paymentAmount > currentCreditBill) {
+      alert(`O valor do pagamento não pode ser maior que a fatura (R$ ${currentCreditBill.toFixed(2)}).`);
       return;
     }
     
@@ -547,8 +728,25 @@ export default function App() {
     setCreditBillAmount(prev => prev + paymentAmount);
     setBillPaymentAmount('');
     
-    alert(`✅ Pagamento de R$ ${paymentAmount.toFixed(2)} realizado com sucesso!`);
-  }, [billPaymentAmount, creditBill, remainingSalary]);
+    const newBillTotal = currentCreditBill - paymentAmount;
+    if (newBillTotal <= 0) {
+      setExpenses(prev => prev.map(expense => {
+        if (expense.paymentMethod === 'credit' && expense.installments && expense.totalInstallments) {
+          if (expense.installments < expense.totalInstallments) {
+            return {
+              ...expense,
+              installments: expense.installments + 1,
+              dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR')
+            };
+          }
+        }
+        return expense;
+      }));
+      alert('✅ Fatura paga completamente! Próximas parcelas agendadas.');
+    } else {
+      alert(`✅ Pagamento de R$ ${paymentAmount.toFixed(2)} realizado com sucesso!`);
+    }
+  }, [billPaymentAmount, currentCreditBill, remainingSalary]);
 
   const payInstallment = React.useCallback((expenseId: string) => {
     setExpenses(prev => prev.map(expense => {
@@ -578,6 +776,65 @@ export default function App() {
     setCreditLimit(parseFloat(tempCredit) || 0);
     setEditingCredit(false);
   }, [tempCredit]);
+
+  const handleInvest = React.useCallback((investment: Investment) => {
+    setSelectedInvestment(investment);
+  }, []);
+
+  const confirmInvestment = React.useCallback(() => {
+    if (!selectedInvestment || !investmentAmount) {
+      alert('Digite um valor para investir.');
+      return;
+    }
+
+    const amount = parseFloat(investmentAmount);
+    
+    if (amount < selectedInvestment.minInvestment || amount > selectedInvestment.maxInvestment) {
+      alert(`Valor deve estar entre R$ ${selectedInvestment.minInvestment} e R$ ${selectedInvestment.maxInvestment}.`);
+      return;
+    }
+
+    if (amount > remainingSalary) {
+      alert('Saldo insuficiente para este investimento.');
+      return;
+    }
+
+    const newInvestment: UserInvestment = {
+      id: Date.now().toString(),
+      investmentId: selectedInvestment.id,
+      amount,
+      date: new Date().toISOString().split('T')[0]
+    };
+
+    setUserInvestments(prev => [...prev, newInvestment]);
+    
+    const investmentExpense: Expense = {
+      id: Date.now().toString(),
+      category: `Investimento: ${selectedInvestment.name}`,
+      amount,
+      iconType: 'shopping',
+      paymentMethod: 'salary',
+      dateAdded: new Date().toISOString().split('T')[0]
+    };
+    
+    setExpenses(prev => [...prev, investmentExpense]);
+    
+    setSelectedInvestment(null);
+    setInvestmentAmount('');
+    alert(`✅ Investimento de R$ ${amount.toFixed(2)} em ${selectedInvestment.name} realizado com sucesso!`);
+  }, [selectedInvestment, investmentAmount, remainingSalary]);
+
+  // Initialize current month data
+  useEffect(() => {
+    const currentMonthKey = getCurrentMonthKey();
+    if (!monthlyData[currentMonthKey]) {
+      const initialData = initializeMonthData(currentMonthKey);
+      setMonthlyData(prev => ({
+        ...prev,
+        [currentMonthKey]: initialData
+      }));
+    }
+  }, []);
 
   // 🟦 SPLASH SCREEN
   if (currentScreen === 'splash') {
@@ -973,13 +1230,12 @@ export default function App() {
 
   // 🟦 DASHBOARD SCREEN
   if (currentScreen === 'dashboard') {
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const currentUser = JSON.parse(localStorage.getItem('budgetProUser') || '{}');
     const userName = currentUser.name || 'Usuário';
     
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
         <DarkModeToggle />
-        {/* Header - Simplified */}
         <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -992,12 +1248,19 @@ export default function App() {
                 <h1 className="text-white text-lg md:text-xl font-semibold">Olá, {userName}</h1>
               </div>
             </div>
+            <Button
+              onClick={handleLogout}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
           </div>
         </div>
 
         <div className="px-4 py-4">
           <Tabs defaultValue="overview" className="space-y-4">
-            {/* Tabs Navigation */}
             <TabsList className={`grid w-full grid-cols-2 md:grid-cols-4 rounded-xl p-1 h-auto md:h-11 ${isDarkMode ? 'bg-[#1e293b]' : 'bg-[#f8fafc]'}`}>
               <TabsTrigger 
                 value="overview" 
@@ -1030,22 +1293,20 @@ export default function App() {
                 🧾 Pagar Fatura
               </TabsTrigger>
               <TabsTrigger 
-                value="ai"
+                value="investments"
                 className={`rounded-lg transition-all text-xs font-medium py-2 ${
                   isDarkMode 
                     ? 'data-[state=active]:bg-[#60a5fa] data-[state=active]:text-white data-[state=inactive]:bg-[#172554] data-[state=inactive]:text-[#94a3b8]' 
                     : 'data-[state=active]:bg-[#046BF4] data-[state=active]:text-white data-[state=inactive]:text-[#64748b] hover:bg-sky-100'
                 }`}
               >
-                🤖 IA
+                💰 Investimentos
               </TabsTrigger>
             </TabsList>
 
-            {/* 🔵 OVERVIEW TAB - NEW STRUCTURE */}
+            {/* 🔵 OVERVIEW TAB */}
             <TabsContent value="overview" className="space-y-4">
-              {/* Grid 2x2 - Financial Overview */}
               <div className="grid grid-cols-2 gap-3 mb-4">
-                {/* Salário Mensal */}
                 <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                   <CardContent className="p-4">
                     <div className="space-y-2">
@@ -1097,7 +1358,6 @@ export default function App() {
                   </CardContent>
                 </Card>
 
-                {/* Limite do Cartão */}
                 <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                   <CardContent className="p-4">
                     <div className="space-y-2">
@@ -1149,11 +1409,10 @@ export default function App() {
                   </CardContent>
                 </Card>
 
-                {/* Disponível */}
                 <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                   <CardContent className="p-4">
                     <div className="space-y-2">
-                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>DISPONÍVEL</p>
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>SALÁRIO DISPONÍVEL</p>
                       <p className="text-xl font-semibold text-green-600">
                         R$ {remainingSalary.toFixed(2)}
                       </p>
@@ -1161,20 +1420,19 @@ export default function App() {
                   </CardContent>
                 </Card>
 
-                {/* Cartão */}
                 <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                   <CardContent className="p-4">
                     <div className="space-y-2">
-                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>CARTÃO</p>
+                      <p className={`text-xs uppercase ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>LIMITE DISPONÍVEL</p>
                       <p className="text-xl font-semibold text-purple-600">
-                        R$ {creditBill.toFixed(2)}
+                        R$ {availableCredit.toFixed(2)}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Resumo do Mês */}
+              {/* CORRIGIDO BUG 3: Resumo do Mês agora inclui salário + cartão */}
               <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-white' : ''}`}>
@@ -1220,7 +1478,7 @@ export default function App() {
                 </CardContent>
               </Card>
 
-              {/* Gráfico de Evolução - FUNCIONAL */}
+              {/* CORRIGIDO BUG 1: Gráfico com 3 linhas distintas */}
               <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
@@ -1245,7 +1503,7 @@ export default function App() {
                 <CardContent>
                   <div className="h-48">
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={monthlyData}>
+                      <LineChart data={getChartData()}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis 
                           dataKey="day" 
@@ -1257,20 +1515,24 @@ export default function App() {
                           axisLine={false}
                           tickLine={false}
                           tick={{ fontSize: 10, fill: isDarkMode ? '#9ca3af' : '#666' }}
-                          tickFormatter={(value) => `R$ ${value}`}
+                          tickFormatter={(value) => `R$ ${value.toFixed(0)}`}
                         />
-                       <Tooltip
-                         contentStyle={{
-                         backgroundColor: isDarkMode ? '#1e293b' : 'white',
-                         border: '1px solid #e0e0e0',
-                         borderRadius: '8px',
-                         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                         fontSize: '12px',
-                         color: isDarkMode ? 'white' : 'black'
+                        <Tooltip 
+                          formatter={(value: any, name: string) => [
+                            `R$ ${Number(value).toFixed(2)}`,
+                            name === 'salario' ? 'Salário' :
+                            name === 'cartao' ? 'Cartão' : 'Investimentos'
+                          ]}
+                          labelFormatter={(label) => `Dia: ${label}`}
+                          contentStyle={{ 
+                            backgroundColor: isDarkMode ? '#1e293b' : 'white', 
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                            fontSize: '12px',
+                            color: isDarkMode ? 'white' : 'black'
                           }}
-                         labelFormatter={(label) => `Dia ${label}`}
-                         formatter={(value: any) => `R$ ${Number(value).toFixed(2)}`}
-                         />
+                        />
                         <Line 
                           type="monotone" 
                           dataKey="salario" 
@@ -1282,20 +1544,20 @@ export default function App() {
                         />
                         <Line 
                           type="monotone" 
-                          dataKey="gastos" 
-                          stroke="#EF4444" 
-                          strokeWidth={2}
-                          dot={{ fill: '#EF4444', strokeWidth: 2, r: 2 }}
-                          activeDot={{ r: 4, fill: '#EF4444' }}
-                          name="Gastos"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="investimentos" 
+                          dataKey="cartao" 
                           stroke="#046BF4" 
                           strokeWidth={2}
                           dot={{ fill: '#046BF4', strokeWidth: 2, r: 2 }}
                           activeDot={{ r: 4, fill: '#046BF4' }}
+                          name="Cartão"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="investimentos" 
+                          stroke="#8B5CF6" 
+                          strokeWidth={2}
+                          dot={{ fill: '#8B5CF6', strokeWidth: 2, r: 2 }}
+                          activeDot={{ r: 4, fill: '#8B5CF6' }}
                           name="Investimentos"
                         />
                       </LineChart>
@@ -1305,7 +1567,7 @@ export default function App() {
               </Card>
             </TabsContent>
 
-            {/* 🔵 GASTOS TAB - Two Boards Side by Side */}
+            {/* 🔵 GASTOS TAB - CORRIGIDO BUG 2: Inputs separados */}
             <TabsContent value="boards" className="space-y-4">
               <div className="mb-4">
                 <h2 className={`text-lg font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
@@ -1326,23 +1588,22 @@ export default function App() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Add expense form */}
                       <div className="space-y-2">
                         <Input
                           placeholder="Nome do gasto"
-                          value={newCategory}
-                          onChange={(e) => setNewCategory(e.target.value)}
+                          value={newCategorySalary}
+                          onChange={(e) => setNewCategorySalary(e.target.value)}
                           className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
                         <Input
                           type="number"
                           placeholder="Valor"
-                          value={newAmount}
-                          onChange={(e) => setNewAmount(e.target.value)}
+                          value={newAmountSalary}
+                          onChange={(e) => setNewAmountSalary(e.target.value)}
                           className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
                         <Button
-                          onClick={() => addExpense('salary')}
+                          onClick={addExpenseSalary}
                           className="w-full h-10"
                           style={{ backgroundColor: '#046BF4' }}
                         >
@@ -1351,7 +1612,6 @@ export default function App() {
                         </Button>
                       </div>
 
-                      {/* Expense list */}
                       <div className="space-y-2">
                         {expenses.filter(e => e.paymentMethod === 'salary').length === 0 ? (
                           <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1387,7 +1647,6 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Total */}
                       <div className={`pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-center">
                           <span className={`font-semibold ${isDarkMode ? 'text-white' : ''}`}>Total:</span>
@@ -1407,30 +1666,29 @@ export default function App() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {/* Add expense form with installments */}
                       <div className="space-y-2">
                         <Input
                           placeholder="Nome da compra"
-                          value={newCategory}
-                          onChange={(e) => setNewCategory(e.target.value)}
+                          value={newCategoryCredit}
+                          onChange={(e) => setNewCategoryCredit(e.target.value)}
                           className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
                         <Input
                           type="number"
                           placeholder="Valor total"
-                          value={newAmount}
-                          onChange={(e) => setNewAmount(e.target.value)}
+                          value={newAmountCredit}
+                          onChange={(e) => setNewAmountCredit(e.target.value)}
                           className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
                         <Input
                           type="number"
                           placeholder="Número de parcelas (opcional)"
-                          value={newInstallments}
-                          onChange={(e) => setNewInstallments(e.target.value)}
+                          value={newInstallmentsCredit}
+                          onChange={(e) => setNewInstallmentsCredit(e.target.value)}
                           className={`h-10 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
                         />
                         <Button
-                          onClick={() => addExpense('credit')}
+                          onClick={addExpenseCredit}
                           className="w-full h-10"
                           style={{ backgroundColor: '#046BF4' }}
                         >
@@ -1439,7 +1697,6 @@ export default function App() {
                         </Button>
                       </div>
 
-                      {/* Expense list with installments */}
                       <div className="space-y-2">
                         {expenses.filter(e => e.paymentMethod === 'credit').length === 0 ? (
                           <p className={`text-sm text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -1504,11 +1761,10 @@ export default function App() {
                         )}
                       </div>
 
-                      {/* Total */}
                       <div className={`pt-3 border-t ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-center">
                           <span className={`font-semibold ${isDarkMode ? 'text-white' : ''}`}>Total devido este mês:</span>
-                          <span className="font-bold text-purple-600">R$ {creditBill.toFixed(2)}</span>
+                          <span className="font-bold text-purple-600">R$ {currentCreditBill.toFixed(2)}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -1532,7 +1788,7 @@ export default function App() {
                       Fatura atual do cartão:
                     </p>
                     <p className="text-2xl font-bold text-purple-600">
-                      R$ {creditBill.toFixed(2)}
+                      R$ {currentCreditBill.toFixed(2)}
                     </p>
                   </div>
 
@@ -1566,16 +1822,39 @@ export default function App() {
               </Card>
             </TabsContent>
 
-            {/* 🔵 AI TAB */}
-            <TabsContent value="ai" className="space-y-4">
+            {/* 🔵 INVESTMENTS TAB */}
+            <TabsContent value="investments" className="space-y-4">
+              {showInvestmentWarning && (
+                <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : 'bg-yellow-50'} border-2 border-yellow-400`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+                      <div className="flex-1">
+                        <p className={`text-sm ${isDarkMode ? 'text-yellow-300' : 'text-yellow-900'}`}>
+                          <strong>Atenção:</strong> Esses investimentos são fictícios. Nada aqui usará seu dinheiro real. É apenas uma simulação para aprendizado.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => setShowInvestmentWarning(false)}
+                        variant="ghost"
+                        size="sm"
+                        className="flex-shrink-0"
+                      >
+                        <X className="w-5 h-5" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className={`shadow-md border-0 rounded-xl ${isDarkMode ? 'bg-[#1e293b]' : ''}`}>
                 <CardHeader>
                   <CardTitle className={`flex items-center gap-2 ${isDarkMode ? 'text-white' : ''}`}>
-                    <Brain className="w-5 h-5" />
-                    Investimentos Inteligentes
+                    <TrendingUpDown className="w-5 h-5" />
+                    Oportunidades de Investimento
                   </CardTitle>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Explore oportunidades de investimento personalizadas
+                    Explore oportunidades de investimento personalizadas (simulação)
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -1601,7 +1880,31 @@ export default function App() {
                             <p className={`text-sm mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                               {investment.description}
                             </p>
-                            <div className="space-y-2">
+                            
+                            <div className="h-24 mb-3">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={investment.historicalData}>
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke={investment.color} 
+                                    strokeWidth={2}
+                                    dot={false}
+                                  />
+                                  <Tooltip 
+                                    formatter={(value: any) => [`R$ ${value}`, 'Valor']}
+                                    contentStyle={{
+                                      backgroundColor: isDarkMode ? '#1e293b' : 'white',
+                                      border: '1px solid #e0e0e0',
+                                      borderRadius: '8px',
+                                      fontSize: '12px'
+                                    }}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+
+                            <div className="space-y-2 mb-3">
                               <div className="flex justify-between text-sm">
                                 <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Retorno esperado:</span>
                                 <span className="font-semibold text-green-600">
@@ -1622,6 +1925,14 @@ export default function App() {
                                 </span>
                               </div>
                             </div>
+
+                            <Button
+                              onClick={() => handleInvest(investment)}
+                              className="w-full h-10"
+                              style={{ backgroundColor: investment.color }}
+                            >
+                              Investir Agora
+                            </Button>
                           </CardContent>
                         </Card>
                       );
@@ -1629,6 +1940,57 @@ export default function App() {
                   </div>
                 </CardContent>
               </Card>
+
+              {selectedInvestment && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                  <Card className={`w-full max-w-md ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                    <CardHeader>
+                      <CardTitle className={`flex items-center justify-between ${isDarkMode ? 'text-white' : ''}`}>
+                        <span>Investir em {selectedInvestment.name}</span>
+                        <Button
+                          onClick={() => {
+                            setSelectedInvestment(null);
+                            setInvestmentAmount('');
+                          }}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <X className="w-5 h-5" />
+                        </Button>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div>
+                        <Label className={isDarkMode ? 'text-white' : ''}>Valor do Investimento</Label>
+                        <Input
+                          type="number"
+                          placeholder={`Mín: R$ ${selectedInvestment.minInvestment}`}
+                          value={investmentAmount}
+                          onChange={(e) => setInvestmentAmount(e.target.value)}
+                          className={`h-12 mt-2 ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : ''}`}
+                        />
+                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          Máximo: R$ {selectedInvestment.maxInvestment}
+                        </p>
+                      </div>
+
+                      <div className={`p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                          Saldo disponível: <span className="font-semibold text-green-600">R$ {remainingSalary.toFixed(2)}</span>
+                        </p>
+                      </div>
+
+                      <Button
+                        onClick={confirmInvestment}
+                        className="w-full h-12"
+                        style={{ backgroundColor: selectedInvestment.color }}
+                      >
+                        Confirmar Investimento
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
