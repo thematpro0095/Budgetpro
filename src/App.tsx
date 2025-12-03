@@ -46,7 +46,7 @@ import {
   TrendingUpDown
 } from 'lucide-react';
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, Pie } from 'recharts';
-import logoDefinitiva from 'figma:asset/0314ca9ef2ad7a1d30a0d23fdfefdf6f06ebf23c.png';
+import logoDefinitiva from './assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 
 type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard';
