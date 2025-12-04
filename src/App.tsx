@@ -48,6 +48,8 @@ import {
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line, Legend, Pie } from 'recharts';
 import logoDefinitiva from './assets/logo.png';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { auth } from "./firebase";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 
 type Screen = 'splash' | 'login' | 'signup' | 'forgot-password' | 'reset-password' | 'dashboard';
 type IconType = 'coffee' | 'car' | 'home' | 'shopping' | 'smartphone';
@@ -525,133 +527,74 @@ export default function App() {
     );
   };
 
-  // Authentication handlers
-  const handleLogin = React.useCallback(() => {
-    if (!email || !password) {
-      alert('Por favor, preencha todos os campos.');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-    const user = users.find((u: any) => u.email === email && u.passwordHash === btoa(password));
-    
-    if (user) {
-      const token = generateToken();
-      localStorage.setItem('budgetProToken', token);
-      localStorage.setItem('budgetProUser', JSON.stringify({ name: user.name, email: user.email }));
-      setCurrentScreen('dashboard');
+ // Authentication handlers - AGORA COM FIREBASE
+const handleLogin = React.useCallback(async () => {
+  if (!email || !password) {
+    alert('Por favor, preencha todos os campos.');
+    return;
+  }
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    setCurrentScreen('dashboard');
+  } catch (error: any) {
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      alert('Email ou senha incorretos.');
+    } else if (error.code === 'auth/too-many-requests') {
+      alert('Muitas tentativas. Tente novamente mais tarde.');
     } else {
-      alert('Email ou senha incorretos. Verifique seus dados ou crie uma conta.');
+      alert('Erro ao fazer login. Tente novamente.');
     }
-  }, [email, password]);
+  }
+}, [email, password]);
 
-  const handleSignup = React.useCallback(() => {
-    if (!name || !email || !password) {
-      alert('Por favor, preencha todos os campos obrigatórios.');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      alert('As senhas não coincidem.');
-      return;
-    }
-
-    if (password.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-    
-    if (users.some((u: any) => u.email === email)) {
+const handleSignup = React.useCallback(async () => {
+  if (!name || !email || !password) {
+    alert('Por favor, preencha todos os campos obrigatórios.');
+    return;
+  }
+  if (password !== confirmPassword) {
+    alert('As senhas não coincidem.');
+    return;
+  }
+  if (password.length < 6) {
+    alert('A senha deve ter pelo menos 6 caracteres.');
+    return;
+  }
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+    // Salva o nome do usuário no localStorage pra mostrar "Olá, Renan"
+    localStorage.setItem('budgetProUser', JSON.stringify({ name, email }));
+    setCurrentScreen('dashboard');
+  } catch (error: any) {
+    if (error.code === 'auth/email-already-in-use') {
       alert('Este email já está cadastrado. Tente fazer login.');
-      return;
-    }
-
-    const newUser = { 
-      id: Date.now(), 
-      name, 
-      email, 
-      passwordHash: btoa(password)
-    };
-    users.push(newUser);
-    localStorage.setItem('budgetProUsers', JSON.stringify(users));
-    
-    setName('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    
-    alert('Conta criada com sucesso! Faça login para continuar.');
-    setCurrentScreen('login');
-  }, [name, email, password, confirmPassword]);
-
-  const handleForgotPassword = React.useCallback(() => {
-    if (!resetEmail) {
-      alert('Por favor, digite seu email.');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-    const user = users.find((u: any) => u.email === resetEmail);
-    
-    if (user) {
-      localStorage.setItem('resetEmail', resetEmail);
-      alert('Link de redefinição enviado para seu email! (Simulação)');
-      setCurrentScreen('reset-password');
+    } else if (error.code === 'auth/weak-password') {
+      alert('Senha muito fraca.');
     } else {
-      alert('Email não encontrado em nossa base de dados.');
+      alert('Erro ao criar conta. Tente novamente.');
     }
-  }, [resetEmail]);
+  }
+}, [name, email, password, confirmPassword]);
 
-  const handleResetPassword = React.useCallback(() => {
-    if (!newPassword || !confirmNewPassword) {
-      alert('Por favor, preencha todos os campos.');
-      return;
-    }
+const handleForgotPassword = React.useCallback(() => {
+  if (!resetEmail) {
+    alert('Por favor, digite seu email.');
+    return;
+  }
+  alert('Funcionalidade de recuperação de senha ainda não implementada no Firebase (em breve!)');
+  // Futuro: sendPasswordResetEmail(auth, resetEmail)
+}, [resetEmail]);
 
-    if (newPassword !== confirmNewPassword) {
-      alert('As senhas não coincidem.');
-      return;
-    }
+const handleResetPassword = React.useCallback(() => {
+  alert('Funcionalidade de reset de senha ainda não implementada (em breve!)');
+  setCurrentScreen('login');
+}, []);
 
-    if (newPassword.length < 6) {
-      alert('A senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-
-    const email = localStorage.getItem('resetEmail');
-    if (!email) {
-      alert('Erro: sessão expirada.');
-      setCurrentScreen('login');
-      return;
-    }
-
-    const users = JSON.parse(localStorage.getItem('budgetProUsers') || '[]');
-    const userIndex = users.findIndex((u: any) => u.email === email);
-    
-    if (userIndex !== -1) {
-      users[userIndex].passwordHash = btoa(newPassword);
-      localStorage.setItem('budgetProUsers', JSON.stringify(users));
-      localStorage.removeItem('resetEmail');
-      
-      setNewPassword('');
-      setConfirmNewPassword('');
-      setResetEmail('');
-      
-      alert('Senha alterada com sucesso! Faça login com sua nova senha.');
-      setCurrentScreen('login');
-    } else {
-      alert('Erro: usuário não encontrado.');
-      setCurrentScreen('login');
-    }
-  }, [newPassword, confirmNewPassword]);
-
-  const handleLogout = React.useCallback(() => {
-    localStorage.removeItem('budgetProToken');
-    localStorage.removeItem('budgetProUser');
-    setCurrentScreen('login');
-  }, []);
+const handleLogout = React.useCallback(async () => {
+  await auth.signOut();
+  localStorage.removeItem('budgetProUser');
+  setCurrentScreen('login');
+}, []);
 
   // CORRIGIDO BUG 2: Função addExpense usa inputs separados
   const addExpenseSalary = React.useCallback(() => {
