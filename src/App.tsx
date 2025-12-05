@@ -1178,29 +1178,32 @@ const handleLogout = React.useCallback(async () => {
     
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-slate-900' : 'bg-gray-50'}`}>
-        <DarkModeToggle />
-        <div className="px-4 py-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
+                <DarkModeToggle />
+        <div className="px-4 pt-20 pb-4 shadow-sm" style={{ backgroundColor: '#046BF4' }}>
+          {/* pt-20 = espaço pro DarkModeToggle não ficar em cima do botão Sair */}
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <img 
-                src={logoDefinitiva} 
-                alt="BudgetPro" 
+              <img
+                src={logoDefinitiva}
+                alt="BudgetPro"
                 className="w-12 h-12 md:w-16 md:h-16 object-contain"
               />
               <div className="ml-3 md:ml-4">
                 <h1 className="text-white text-lg md:text-xl font-semibold">Olá, {userName}</h1>
               </div>
             </div>
-             <Button
+
+            {/* BOTÃO SAIR PERFEITO (sem sobreposição) */}
+            <Button
               onClick={handleLogout}
-  className="flex items-center gap-2 text-white hover:bg-white/20 px-4 py-2 rounded-xl transition-all font-medium"
->
-  <LogOut className="w-5 h-5" />
-  Sair
-</Button>
+              className="flex items-center gap-2 text-white hover:bg-white/20 px-5 py-3 rounded-xl transition-all font-medium shadow-lg"
+            >
+              <LogOut className="w-5 h-5" />
+              Sair
+            </Button>
           </div>
         </div>
-
+        
         <div className="px-4 py-4">
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList className={`grid w-full grid-cols-2 md:grid-cols-4 rounded-xl p-1 h-auto md:h-11 ${isDarkMode ? 'bg-[#1e293b]' : 'bg-[#f8fafc]'}`}>
