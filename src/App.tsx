@@ -1191,14 +1191,13 @@ const handleLogout = React.useCallback(async () => {
                 <h1 className="text-white text-lg md:text-xl font-semibold">Olá, {userName}</h1>
               </div>
             </div>
-            <Button
+             <Button
               onClick={handleLogout}
-              variant="ghost"
-              size="sm"
-              className="text-white hover:bg-white/20"
-            >
-              <LogOut className="w-5 h-5" />
-            </Button>
+  className="flex items-center gap-2 text-white hover:bg-white/20 px-4 py-2 rounded-xl transition-all font-medium"
+>
+  <LogOut className="w-5 h-5" />
+  Sair
+</Button>
           </div>
         </div>
 
