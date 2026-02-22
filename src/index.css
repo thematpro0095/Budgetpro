@@ -254,6 +254,9 @@
     letter-spacing: inherit;
     color: inherit;
     opacity: 1;
+    --lightningcss-light: initial;
+    --lightningcss-dark: ;
+    color-scheme: light;
     background-color: #0000;
     border-radius: 0;
   }
@@ -265,6 +268,9 @@
     letter-spacing: inherit;
     color: inherit;
     opacity: 1;
+    --lightningcss-light: initial;
+    --lightningcss-dark: ;
+    color-scheme: light;
     background-color: #0000;
     border-radius: 0;
   }
@@ -635,12 +641,8 @@
     height: calc(var(--spacing) * 16);
   }
 
-  .h-24 {
-    height: calc(var(--spacing) * 24);
-  }
-
-  .h-48 {
-    height: calc(var(--spacing) * 48);
+  .h-32 {
+    height: calc(var(--spacing) * 32);
   }
 
   .h-\[calc\(100\%-1px\)\] {
@@ -675,6 +677,10 @@
     width: calc(var(--spacing) * 2);
   }
 
+  .w-3 {
+    width: calc(var(--spacing) * 3);
+  }
+
   .w-4 {
     width: calc(var(--spacing) * 4);
   }
@@ -693,10 +699,6 @@
 
   .w-16 {
     width: calc(var(--spacing) * 16);
-  }
-
-  .w-24 {
-    width: calc(var(--spacing) * 24);
   }
 
   .w-32 {
@@ -1094,6 +1096,10 @@
     padding-block: calc(var(--spacing) * 8);
   }
 
+  .pt-2 {
+    padding-top: calc(var(--spacing) * 2);
+  }
+
   .pt-3 {
     padding-top: calc(var(--spacing) * 3);
   }
@@ -1339,11 +1345,6 @@
 
   .shadow-xl {
     --tw-shadow: 0 20px 25px -5px var(--tw-shadow-color, #0000001a), 0 8px 10px -6px var(--tw-shadow-color, #0000001a);
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
-
-  .ring {
-    --tw-ring-shadow: var(--tw-ring-inset, ) 0 0 0 calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
 
@@ -1860,8 +1861,8 @@
   }
 
   @media (width >= 40rem) {
-    .sm\:h-32 {
-      height: calc(var(--spacing) * 32);
+    .sm\:h-40 {
+      height: calc(var(--spacing) * 40);
     }
   }
 
@@ -1878,8 +1879,8 @@
   }
 
   @media (width >= 40rem) {
-    .sm\:w-32 {
-      width: calc(var(--spacing) * 32);
+    .sm\:w-40 {
+      width: calc(var(--spacing) * 40);
     }
   }
 
@@ -1914,8 +1915,8 @@
   }
 
   @media (width >= 48rem) {
-    .md\:h-40 {
-      height: calc(var(--spacing) * 40);
+    .md\:h-48 {
+      height: calc(var(--spacing) * 48);
     }
   }
 
@@ -1932,8 +1933,8 @@
   }
 
   @media (width >= 48rem) {
-    .md\:w-40 {
-      width: calc(var(--spacing) * 40);
+    .md\:w-48 {
+      width: calc(var(--spacing) * 48);
     }
   }
 
@@ -1986,18 +1987,6 @@
     .md\:text-xl {
       font-size: var(--text-xl);
       line-height: var(--tw-leading, var(--text-xl--line-height));
-    }
-  }
-
-  @media (width >= 64rem) {
-    .lg\:h-48 {
-      height: calc(var(--spacing) * 48);
-    }
-  }
-
-  @media (width >= 64rem) {
-    .lg\:w-48 {
-      width: calc(var(--spacing) * 48);
     }
   }
 
