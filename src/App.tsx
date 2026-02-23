@@ -20,6 +20,9 @@ import { MonthlySummaryCard } from './components/dashboard/MonthlySummaryCard';
 import { EvolutionChart } from './components/dashboard/EvolutionChart';
 import { ExpenseBoard } from './components/dashboard/ExpenseBoard';
 import { BillPayment } from './components/dashboard/BillPayment';
+import { FinancialAssistant } from './components/dashboard/FinancialAssistant';
+import { FinancialHealthIndex } from './components/dashboard/FinancialHealthIndex';
+import { BehavioralProfile } from './components/dashboard/BehavioralProfile';
 
 // Utils
 import { generateToken, getCurrentMonthKey, getCurrentMonthName, hashPassword, verifyPassword } from './utils/helpers';
@@ -659,6 +662,45 @@ export default function App() {
                 onMonthChange={setSelectedMonth}
                 isDarkMode={isDarkMode}
               />
+
+              <FinancialAssistant
+                context="overview"
+                data={{
+                  salary,
+                  creditLimit,
+                  remainingSalary,
+                  availableCredit,
+                  salaryExpenses,
+                  creditExpenses,
+                  expensePercentage,
+                  expenses
+                }}
+                isDarkMode={isDarkMode}
+              />
+
+              <FinancialHealthIndex
+                salary={salary}
+                creditLimit={creditLimit}
+                remainingSalary={remainingSalary}
+                salaryExpenses={salaryExpenses}
+                creditExpenses={creditExpenses}
+                expensePercentage={expensePercentage}
+                totalInvestments={totalInvestments}
+                expenses={expenses}
+                isDarkMode={isDarkMode}
+              />
+
+              <BehavioralProfile
+                salary={salary}
+                creditLimit={creditLimit}
+                remainingSalary={remainingSalary}
+                salaryExpenses={salaryExpenses}
+                creditExpenses={creditExpenses}
+                expensePercentage={expensePercentage}
+                totalInvestments={totalInvestments}
+                expenses={expenses}
+                isDarkMode={isDarkMode}
+              />
             </TabsContent>
 
             {/* Gastos Tab */}
@@ -703,6 +745,17 @@ export default function App() {
                   showInstallments={true}
                 />
               </div>
+
+              <FinancialAssistant
+                context="expenses"
+                data={{
+                  salary,
+                  salaryExpenses,
+                  creditExpenses,
+                  expenses
+                }}
+                isDarkMode={isDarkMode}
+              />
             </TabsContent>
 
             {/* Payment Tab */}
@@ -713,6 +766,16 @@ export default function App() {
                 remainingSalary={remainingSalary}
                 onPaymentAmountChange={setBillPaymentAmount}
                 onPayBill={payCreditBill}
+                isDarkMode={isDarkMode}
+              />
+
+              <FinancialAssistant
+                context="payment"
+                data={{
+                  currentBill: currentCreditBill,
+                  remainingSalary,
+                  creditExpenses
+                }}
                 isDarkMode={isDarkMode}
               />
             </TabsContent>
@@ -886,6 +949,16 @@ export default function App() {
                   </Card>
                 </div>
               )}
+
+              <FinancialAssistant
+                context="investments"
+                data={{
+                  totalInvestments,
+                  remainingSalary,
+                  salary
+                }}
+                isDarkMode={isDarkMode}
+              />
             </TabsContent>
           </Tabs>
         </div>
