@@ -1,60 +1,30 @@
-# 💰 BudgetPro App
+# BudgetPro 💰
 
-BudgetPro é um aplicativo inteligente de gestão financeira desenvolvido para ajudar usuários a controlar, analisar e melhorar sua saúde financeira.
+Aplicativo mobile de gerenciamento financeiro com design moderno.
 
-Diferente de aplicativos tradicionais que apenas exibem gráficos, o BudgetPro interpreta dados e oferece orientações personalizadas com base no comportamento financeiro do usuário.
+## Tecnologias
+- React 18 + TypeScript
+- Tailwind CSS v4
+- Motion (Framer Motion)
+- Recharts
+- Sonner (toasts)
+- Lucide React (ícones)
 
----
-
-## 🚀 Diferenciais do Projeto
-
-### 🧠 Mini Assistente Financeiro Inteligente
-Analisa automaticamente os dados financeiros e gera recomendações personalizadas com base em:
-- Crescimento de gastos
-- Percentual da renda comprometida
-- Tendências mensais
-- Padrões de consumo
-
----
-
-### 📊 Modo “Realidade Financeira”
-Sistema exclusivo que calcula um **Índice de Saúde Financeira (0 a 100)** com base em:
-- Estabilidade de renda
-- Controle de gastos
-- Saldo recorrente
-- Reserva financeira
-
-Classificação:
-- 🟢 70–100 → Saudável  
-- 🟡 40–69 → Atenção  
-- 🔴 0–39 → Risco  
-
----
-
-### 🧬 Perfil Comportamental Financeiro
-O aplicativo classifica automaticamente o usuário em perfis como:
-- Estratégico
-- Equilibrado
-- Conservador
-- Arriscado
-- Impulsivo
-
-As recomendações são adaptadas ao perfil identificado.
-
----
-
-## 🛠 Tecnologias Utilizadas
-
-- TypeScript
-- React
-- Vite
-- Figma (Design e prototipação)
-
----
-
-## ▶️ Como Executar o Projeto
-
-Instale as dependências:
+## Como rodar
 
 ```bash
 npm install
+npm run dev
+```
+
+## Funcionalidades
+- 🔐 Sistema de autenticação (login/signup/logout)
+- 📊 Visão Geral: cards de salário, limite, disponível
+- 💸 Gastos: pranchetas separadas para salário e cartão
+- 💳 Pagar Fatura: com suporte a parcelas
+- 📈 Investimentos: simulações fictícias
+- 🌙 Modo escuro completo com degradê
+- 💾 Persistência no localStorage
+- 🤖 Mini Assistente Financeiro Inteligente
+- ❤️ Índice de Saúde Financeira (0–100)
+- 👤 Perfil Comportamental Automático
